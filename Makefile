@@ -1,17 +1,21 @@
+# Compiler and flags
 CC = gcc
-CFLAGS = -m32 -ffreestanding -nostdlib -nostartfiles -nodefaultlibs
+CFLAGS = -m32 -ffreestanding -nostdlib -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector
 AS = nasm
 ASFLAGS = -f bin
 
+# Files
 BOOTLOADER = boot.asm
 MULTIBOOT_HEADER = multiboot_header.asm
 KERNEL = kernel.c
 LINKER = link.ld
 
+# Outputs
 BOOTLOADER_BIN = boot.bin
 KERNEL_BIN = kernel.bin
 ISO = mykernel.iso
 
+# Targets
 all: $(ISO)
 
 $(BOOTLOADER_BIN): $(BOOTLOADER)
@@ -31,7 +35,7 @@ $(ISO): $(BOOTLOADER_BIN) $(KERNEL_BIN)
 	echo "menuentry 'My Kernel' {" >> iso/boot/grub/grub.cfg
 	echo "  multiboot /boot/kernel.bin" >> iso/boot/grub/grub.cfg
 	echo "  boot" >> iso/boot/grub/grub.cfg
-	echo " }" >> iso/boot/grub/grub.cfg
+	echo "}" >> iso/boot/grub/grub.cfg
 	grub-mkrescue -o $@ iso
 
 clean:
@@ -44,6 +48,5 @@ run:
 
 xorriso:
 	xorriso -indev mykernel.iso -ls /boot/grub/
-
 
 .PHONY: all clean re run
