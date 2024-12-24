@@ -1,0 +1,9 @@
+mykernel.iso
+iso/
+objs/
+*.o
+kernel.bin
+jareste*
+*kfs*
+kfs*
+*kfs

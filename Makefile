@@ -1,52 +1,70 @@
-# Compiler and flags
+NAME = jareste_kfs_1.iso
+
 CC = gcc
-CFLAGS = -m32 -ffreestanding -nostdlib -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector
 AS = nasm
-ASFLAGS = -f bin
+CFLAGS = -m32 -ffreestanding -nostdlib -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -O3
+ASFLAGS = -f elf
+LDFLAGS = -m elf_i386
 
-# Files
-BOOTLOADER = boot.asm
-MULTIBOOT_HEADER = multiboot_header.asm
-KERNEL = kernel.c
-LINKER = link.ld
+SRC_DIR = srcs
+BOOT_DIR = srcs/boot
+LINKER_DIR = linker
+OBJ_DIR = objs
+ISO_DIR = iso
+GRUB_DIR = $(ISO_DIR)/boot/grub
 
-# Outputs
-BOOTLOADER_BIN = boot.bin
-KERNEL_BIN = kernel.bin
-ISO = mykernel.iso
+vpath %.c $(SRC_DIR)
+vpath %.asm $(BOOT_DIR)
 
-# Targets
-all: $(ISO)
+C_SOURCES = kernel.c
+ASM_SOURCES = multiboot_header.asm boot.asm
 
-$(BOOTLOADER_BIN): $(BOOTLOADER)
+SRC = $(C_SOURCES) $(ASM_SOURCES)
+
+OBJ = $(addprefix $(OBJ_DIR)/, $(C_SOURCES:.c=.o) $(ASM_SOURCES:.asm=.o))
+
+DEP = $(addsuffix .d, $(basename $(OBJ)))
+
+all: $(NAME)
+
+$(OBJ_DIR)/%.o: %.c
+	@mkdir -p $(@D)
+	$(CC) -MMD $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/%.o: %.asm
+	@mkdir -p $(@D)
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(KERNEL_BIN): $(KERNEL) $(MULTIBOOT_HEADER)
-	$(AS) -f elf $(MULTIBOOT_HEADER) -o multiboot_header.o
-	$(CC) $(CFLAGS) -c $(KERNEL) -o kernel.o
-	ld -m elf_i386 -T $(LINKER) -o $@ multiboot_header.o kernel.o
-
-$(ISO): $(BOOTLOADER_BIN) $(KERNEL_BIN)
-	mkdir -p iso/boot/grub
-	cp $(BOOTLOADER_BIN) iso/boot/
-	cp $(KERNEL_BIN) iso/boot/
-	echo "set timeout=0" > iso/boot/grub/grub.cfg
-	echo "set default=0" >> iso/boot/grub/grub.cfg
-	echo "menuentry 'My Kernel' {" >> iso/boot/grub/grub.cfg
-	echo "  multiboot /boot/kernel.bin" >> iso/boot/grub/grub.cfg
-	echo "  boot" >> iso/boot/grub/grub.cfg
-	echo "}" >> iso/boot/grub/grub.cfg
-	grub-mkrescue -o $@ iso
+$(NAME): $(OBJ) $(LINKER_DIR)/link.ld
+	@mkdir -p $(GRUB_DIR)
+	ld $(LDFLAGS) -T $(LINKER_DIR)/link.ld -o kernel.bin $(OBJ)
+	cp kernel.bin $(ISO_DIR)/boot/
+	echo "set timeout=0" > $(GRUB_DIR)/grub.cfg
+	echo "set default=0" >> $(GRUB_DIR)/grub.cfg
+	echo "menuentry 'My Kernel' {" >> $(GRUB_DIR)/grub.cfg
+	echo "  multiboot /boot/kernel.bin" >> $(GRUB_DIR)/grub.cfg
+	echo "  boot" >> $(GRUB_DIR)/grub.cfg
+	echo "}" >> $(GRUB_DIR)/grub.cfg
+	grub-mkrescue -o $(NAME) $(ISO_DIR)
 
 clean:
-	rm -rf *.o *.bin iso $(ISO)
+	rm -f $(OBJ) $(DEP)
+	rm -rf $(OBJ_DIR)
+	@echo "OBJECTS REMOVED"
 
-re: clean all
+fclean: clean
+	rm -f kernel.bin $(NAME)
+	rm -rf $(ISO_DIR)
+	@echo "EVERYTHING REMOVED"
+
+re: fclean all
 
 run:
-	qemu-system-i386 -cdrom mykernel.iso
+	qemu-system-i386 -cdrom $(NAME)
 
 xorriso:
-	xorriso -indev mykernel.iso -ls /boot/grub/
+	xorriso -indev $(NAME) -ls /boot/grub/
 
-.PHONY: all clean re run
+.PHONY: all clean fclean re run xorriso
+
+-include $(DEP)
