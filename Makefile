@@ -13,10 +13,10 @@ OBJ_DIR = objs
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 
-vpath %.c $(SRC_DIR)
+vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display
 vpath %.asm $(BOOT_DIR)
 
-C_SOURCES = kernel.c
+C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c 
 ASM_SOURCES = multiboot_header.asm boot.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
