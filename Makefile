@@ -13,11 +13,11 @@ OBJ_DIR = objs
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 
-vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display
-vpath %.asm $(BOOT_DIR)
+vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard
+vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard
 
-C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c 
-ASM_SOURCES = multiboot_header.asm boot.asm
+C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c
+ASM_SOURCES = multiboot_header.asm boot.asm idt_load.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
 
@@ -61,6 +61,10 @@ re: fclean all
 
 run:
 	qemu-system-i386 -cdrom $(NAME)
+
+debug:
+	qemu-system-i386 -cdrom $(NAME) -d int,cpu_reset
+
 
 xorriso:
 	xorriso -indev $(NAME) -ls /boot/grub/

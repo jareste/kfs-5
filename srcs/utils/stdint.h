@@ -58,4 +58,10 @@ typedef unsigned long long int uintmax_t;
 #define UINT32_MAX 4294967295U
 #define UINT64_MAX 18446744073709551615ULL
 
+
+#define LOW_16(address) (uint16_t)((address) & 0xFFFF)
+#define HIGH_16(address) (uint16_t)(((address) >> 16) & 0xFFFF)
+#define LOW_8(address) (uint8_t)((address) & 0xFF)
+#define HIGH_8(address) (uint8_t)(((address) >> 8) & 0xFF)
+
 #endif /* STDINT_H */
