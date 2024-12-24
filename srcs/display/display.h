@@ -32,4 +32,10 @@ int puts_color(const char *str, uint8_t color);
 
 int printf(const char *format, ...);
 
+void outb(uint16_t port, uint8_t data);
+uint8_t inb(uint16_t port);
+
+void clear_screen();
+
+
 #endif
