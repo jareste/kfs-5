@@ -1,5 +1,7 @@
 NAME = jareste_kfs_1.iso
 
+BIN_NAME = ./iso/boot/kernel.bin
+
 CC = gcc
 AS = nasm
 CFLAGS = -m32 -ffreestanding -nostdlib -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -O3
@@ -17,7 +19,7 @@ vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard
 vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard
 
 C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c
-ASM_SOURCES = multiboot_header.asm boot.asm idt_load.asm
+ASM_SOURCES = boot.asm idt_load.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
 
@@ -39,12 +41,13 @@ $(NAME): $(OBJ) $(LINKER_DIR)/link.ld
 	@mkdir -p $(GRUB_DIR)
 	ld $(LDFLAGS) -T $(LINKER_DIR)/link.ld -o kernel.bin $(OBJ)
 	cp kernel.bin $(ISO_DIR)/boot/
-	echo "set timeout=0" > $(GRUB_DIR)/grub.cfg
-	echo "set default=0" >> $(GRUB_DIR)/grub.cfg
-	echo "menuentry 'My Kernel' {" >> $(GRUB_DIR)/grub.cfg
-	echo "  multiboot /boot/kernel.bin" >> $(GRUB_DIR)/grub.cfg
-	echo "  boot" >> $(GRUB_DIR)/grub.cfg
-	echo "}" >> $(GRUB_DIR)/grub.cfg
+# echo "set timeout=0" > $(GRUB_DIR)/grub.cfg
+# echo "set default=0" >> $(GRUB_DIR)/grub.cfg
+# echo "menuentry \"kfs\" {" >> $(GRUB_DIR)/grub.cfg
+# echo "	multiboot /boot/kernel.bin" >> $(GRUB_DIR)/grub.cfg
+# echo "  boot" >> $(GRUB_DIR)/grub.cfg
+# echo "}" >> $(GRUB_DIR)/grub.cfg
+	cp srcs/boot/grub.cfg $(GRUB_DIR)/.
 	grub-mkrescue -o $(NAME) $(ISO_DIR)
 
 clean:
@@ -60,6 +63,9 @@ fclean: clean
 re: fclean all
 
 run:
+	qemu-system-i386 -kernel $(BIN_NAME)
+
+run_grub:
 	qemu-system-i386 -cdrom $(NAME)
 
 debug:
