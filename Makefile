@@ -19,8 +19,8 @@ vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard
 vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard
 
 C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
-			idt.c
-ASM_SOURCES = boot.asm idt_load.asm handler.asm
+			idt.c itoa.c
+ASM_SOURCES = boot.asm handler.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
 

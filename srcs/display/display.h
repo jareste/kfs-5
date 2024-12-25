@@ -6,6 +6,7 @@
 #define VIDEO_MEMORY 0xb8000
 #define SCREEN_WIDTH 80
 #define SCREEN_HEIGHT 25
+#define MAX_CURSOR_POSITION SCREEN_WIDTH * SCREEN_HEIGHT
 
 #define BLACK           0x00
 #define BLUE            0x01
@@ -36,6 +37,12 @@ void outb(uint16_t port, uint8_t data);
 uint8_t inb(uint16_t port);
 
 void clear_screen();
-
+void delete_last_char();
+void delete_until_char();
+void move_cursor_left();
+void move_cursor_right();
+void move_cursor_up();
+void move_cursor_down();
+void delete_actual_char();
 
 #endif

@@ -1,60 +1,59 @@
 #include "display.h"
+#include "../utils/utils.h"
 
 int printf(const char *format, ...)
 {
     const char *traverse;
     int i;
     char *s;
+    char buffer[32];
 
     void *arg = (void *)(&format + 1);
 
     for (traverse = format; *traverse != '\0'; traverse++)
     {
-        while (*traverse != '%')
+        while (*traverse != '%' && *traverse != '\0')
         {
             putc(*traverse);
             traverse++;
         }
+
+        if (*traverse == '\0')
+            break;
 
         traverse++;
 
         switch (*traverse)
         {
         case 'c':
-            i = *((int *)arg);
+            i = *(int *)arg;
             putc(i);
-            arg += sizeof(int);
+            arg = (void *)((int *)arg + 1);
             break;
 
         case 'd':
-            /* TODO */
+            i = *(int *)arg;
+            itoa(i, buffer, 10);
+            for (char *p = buffer; *p != '\0'; p++)
+            {
+                putc(*p);
+            }
+            arg = (void *)((int *)arg + 1);
             break;
-            // i = *((int *)arg);
-            // if (i < 0)
-            // {
-            //     i = -i;
-            //     putc('-');
-            // }
-            // // puts(itoa(i, 10));
-            // arg += sizeof(int);
-            // break;
-
-        case 'x':
-            /* TODO */
-            break;
-            // i = *((int *)arg);
-            // puts("0x");
-            // puts(itoa(i, 16));
-            // arg += sizeof(int);
-            // break;
 
         case 's':
-            /* TODO */
+            s = *(char **)arg;
+            for (; *s != '\0'; s++)
+            {
+                putc(*s);
+            }
+            arg = (void *)((char **)arg + 1);
             break;
-            // s = *((char **)arg);
-            // puts(s);
-            // arg += sizeof(char *);
-            // break;
+
+        default:
+            putc('%');
+            putc(*traverse);
+            break;
         }
     }
 

@@ -47,12 +47,97 @@ void clear_screen()
         for (int x = 0; x < SCREEN_WIDTH; x++)
         {
             int offset = (y * SCREEN_WIDTH + x) * 2;
-            video_memory[offset] = ' '; // Character
-            video_memory[offset + 1] = 0x07; // Attribute byte: light grey on black background
+            video_memory[offset] = ' ';
+            video_memory[offset + 1] = 0x07;
         }
     }
     cursor_position = 0;
     update_cursor(cursor_position);
+}
+
+void delete_last_char()
+{
+    char *video_memory = (char *)VIDEO_MEMORY;
+    if (cursor_position > 0)
+    {
+        cursor_position--;
+        video_memory[cursor_position * 2] = ' ';
+        video_memory[cursor_position * 2 + 1] = LIGHT_GREY;
+        update_cursor(cursor_position);
+    }
+}
+
+void delete_actual_char()
+{
+    char *video_memory = (char *)VIDEO_MEMORY;
+    if (cursor_position >= 0)
+    {
+        video_memory[cursor_position * 2] = ' ';
+        video_memory[cursor_position * 2 + 1] = LIGHT_GREY;
+    }
+}
+
+void delete_until_char()
+{
+    char *video_memory = (char *)VIDEO_MEMORY;
+
+    if (cursor_position > 0)
+    {
+        cursor_position--;
+
+        while (cursor_position >= 0 && video_memory[cursor_position * 2] == ' ')
+        {
+            video_memory[cursor_position * 2] = ' ';
+            video_memory[cursor_position * 2 + 1] = LIGHT_GREY;
+            cursor_position--;
+        }
+
+        if (cursor_position >= 0)
+        {
+            cursor_position++;
+        }
+
+        update_cursor(cursor_position);
+    }
+}
+
+void move_cursor_right()
+{
+    cursor_position++;
+    if (cursor_position >= SCREEN_WIDTH * SCREEN_HEIGHT)
+    {
+        scroll_screen();
+        cursor_position -= SCREEN_WIDTH;
+    }
+    update_cursor(cursor_position);
+}
+
+void move_cursor_left()
+{
+    if (cursor_position <= 0)
+    {
+        return;
+    }
+    cursor_position--;
+    update_cursor(cursor_position);
+}
+
+void move_cursor_up()
+{
+    if (cursor_position >= SCREEN_WIDTH)
+    {
+        cursor_position -= SCREEN_WIDTH;
+        update_cursor(cursor_position);
+    }
+}
+
+void move_cursor_down()
+{
+    if (cursor_position < MAX_CURSOR_POSITION - SCREEN_WIDTH)
+    {
+        cursor_position += SCREEN_WIDTH;
+        update_cursor(cursor_position);
+    }
 }
 
 void putc_color(char c, uint8_t color)
