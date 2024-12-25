@@ -18,8 +18,9 @@ GRUB_DIR = $(ISO_DIR)/boot/grub
 vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard
 vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard
 
-C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c
-ASM_SOURCES = boot.asm idt_load.asm
+C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
+			idt.c
+ASM_SOURCES = boot.asm idt_load.asm handler.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
 
@@ -41,13 +42,13 @@ $(NAME): $(OBJ) $(LINKER_DIR)/link.ld
 	@mkdir -p $(GRUB_DIR)
 	ld $(LDFLAGS) -T $(LINKER_DIR)/link.ld -o kernel.bin $(OBJ)
 	cp kernel.bin $(ISO_DIR)/boot/
+	cp srcs/boot/grub.cfg $(GRUB_DIR)/.
 # echo "set timeout=0" > $(GRUB_DIR)/grub.cfg
 # echo "set default=0" >> $(GRUB_DIR)/grub.cfg
 # echo "menuentry \"kfs\" {" >> $(GRUB_DIR)/grub.cfg
 # echo "	multiboot /boot/kernel.bin" >> $(GRUB_DIR)/grub.cfg
 # echo "  boot" >> $(GRUB_DIR)/grub.cfg
 # echo "}" >> $(GRUB_DIR)/grub.cfg
-	cp srcs/boot/grub.cfg $(GRUB_DIR)/.
 	grub-mkrescue -o $(NAME) $(ISO_DIR)
 
 clean:
