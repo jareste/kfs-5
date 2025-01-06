@@ -50,6 +50,16 @@ int printf(const char *format, ...)
             arg = (void *)((char **)arg + 1);
             break;
 
+        case 'u':
+            i = *(unsigned int *)arg;
+            itoa(i, buffer, 10);
+            for (char *p = buffer; *p != '\0'; p++)
+            {
+                putc(*p);
+            }
+            arg = (void *)((unsigned int *)arg + 1);
+            break;
+
         default:
             putc('%');
             putc(*traverse);

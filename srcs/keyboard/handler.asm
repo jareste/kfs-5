@@ -61,7 +61,6 @@ common_irq_handler:
 	; iret call
 	iret
 
-; ISRS (software interrupts)
 no_error_code_isr_handler 0
 no_error_code_isr_handler 1
 no_error_code_isr_handler 2

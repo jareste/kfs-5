@@ -13,10 +13,9 @@ void kernel_main()
 
 
     enable_interrupts();
+
     /* Keep CPU busy */
     while (1)
     {
     }
 }
-
-

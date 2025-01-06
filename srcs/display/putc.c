@@ -21,9 +21,9 @@ static void scroll_screen()
 
 void update_cursor(int position)
 {
-    outb(0x3D4, 14); // Send the high byte of the cursor position to the VGA controller
+    outb(0x3D4, 14); /* Send the high byte of the cursor position to the VGA controller */
     outb(0x3D5, (position >> 8) & 0xFF);
-    outb(0x3D4, 15); // Send the low byte of the cursor position to the VGA controller
+    outb(0x3D4, 15); /* Send the low byte of the cursor position to the VGA controller */
     outb(0x3D5, position & 0xFF);
 }
 
