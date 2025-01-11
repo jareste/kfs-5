@@ -93,8 +93,38 @@ char shifted_scancode_to_ascii[128] = {
     0, 0, 0, 0, 0, 0, 0, 0, // Unused
 };
 
+#define KEYBOARD_BUFFER_SIZE 256
+static char keyboard_buffer[KEYBOARD_BUFFER_SIZE] = {0};
+static int keyb_buff_start = 0;
+static int keyb_buff_end = 0;
+
 bool shift_pressed = false;
 bool ctrl_pressed = false;
+
+char get_last_char()
+{
+    if (keyb_buff_start == keyb_buff_end)
+    {
+        return '\0';
+    }
+
+    char c = keyboard_buffer[keyb_buff_start];
+    keyb_buff_start = (keyb_buff_start + 1) % KEYBOARD_BUFFER_SIZE;
+    printf("|%d|", c);
+    return c;
+}
+
+char get_last_char_blocking()
+{
+    char c;
+    while ((c = get_last_char()) == '\0');
+    return c;
+}
+
+char* get_kb_buffer()
+{
+    return keyboard_buffer;
+}
 
 void keyboard_handler()
 {
@@ -134,10 +164,7 @@ void keyboard_handler()
     }
     else if (scancode == 0x0F) // Tab
     {
-        for (int i = 0; i < 4; i++)
-        {
-            putc(' ');
-        }
+        puts("    ");
     }
     else if (scancode == 0x53) // Delete
     {
@@ -172,6 +199,9 @@ void keyboard_handler()
             if (key)
             {
                 putc(key);
+                printf("|%d|", key);
+                keyboard_buffer[keyb_buff_end] = key;
+                keyb_buff_end = (keyb_buff_end + 1) % KEYBOARD_BUFFER_SIZE;
             }
         }
     }

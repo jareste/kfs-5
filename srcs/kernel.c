@@ -1,6 +1,7 @@
 #include "display/display.h"
 #include "keyboard/idt.h"
 #include "gdt/gdt.h"
+#include "kshell/kshell.h"
 
 #define BANNER "Welcome to 42Barcelona's jareste- OS\n"
 
@@ -24,6 +25,8 @@ void kernel_main()
 
     enable_interrupts();
 
+    kshell();
+    printf("Exiting shell...\n");
     /* Keep CPU busy */
     while (1)
     {

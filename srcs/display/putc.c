@@ -61,7 +61,7 @@ void delete_last_char()
     if (cursor_position > 0)
     {
         cursor_position--;
-        video_memory[cursor_position * 2] = ' ';
+        video_memory[cursor_position * 2] = '\0';
         video_memory[cursor_position * 2 + 1] = LIGHT_GREY;
         update_cursor(cursor_position);
     }
