@@ -9,6 +9,18 @@ static void kput_hex(uint8_t byte)
 
 void kdump(void* addr, uint32_t size)
 {
+    if (addr == NULL)
+    {
+        printf("Invalid address: NULL\n");
+        return;
+    }
+
+    if ((uintptr_t)addr % 4 != 0)
+    {
+        printf("Invalid address: Unaligned\n");
+        return;
+    }
+
     uint8_t* p = (uint8_t*)addr;
     uint32_t i = 0;
     while (i < size)

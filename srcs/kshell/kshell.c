@@ -1,7 +1,10 @@
 #include "../display/display.h"
 #include "../keyboard/keyboard.h"
+#include "../utils/utils.h"
 
-/* must implement getc() */
+static void help();
+static void ks_kdump();
+static void reboot();
 
 typedef struct
 {
@@ -10,26 +13,63 @@ typedef struct
     void (*func)();
 } command_t;
 
+static command_t commands[] = {
+    {"help", "Display this help message", help},
+    {"exit", "Exit the shell", NULL},
+    {"clear", "Clear the screen", clear_screen},
+    {"kdump", "Dump memory", ks_kdump},
+    {"reboot", "Reboot the system", reboot},
+};
+
 static void help()
 {
     printf("Available commands:\n");
-    printf("  help: Display this help message\n");
-    printf("  exit: Exit the shell\n");
-    printf("  clear: Clear the screen\n");
-    printf("  kdump: Dump memory\n");
-    printf("  reboot: Reboot the system\n");
+    
+    for (int i = 0; i < sizeof(commands) / sizeof(command_t); i++)
+    {
+        printf("  %s: %s\n", commands[i].cmd, commands[i].desc);
+    }
+}
+
+static void ks_kdump()
+{
+    printf("Enter the address to dump: ");
+    clear_kb_buffer();
+    while (getc() != 10);
+    char* buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    uint32_t addr = (uint32_t)hex_string_to_int(buffer);
+    printf("Address: %x\n", addr);
+    
+    clear_kb_buffer();
+
+    printf("Enter the size to dump: ");
+    while (getc() != 10);
+    buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    uint32_t size = (uint32_t)hex_string_to_int(buffer);
+    printf("Size: %x\n", size);
+
+    if (size < 0 || size > 0x1000)
+    {
+        printf("Invalid size. Size must be between 0 and 0x1000\n");
+        return;
+    }
+
+    clear_kb_buffer();
+    
+    kdump((void*)addr, size);
+}
+
+static void reboot()
+{
+    outb(0x64, 0xFE);
 }
 
 void kshell()
 {
-    command_t commands[] = {
-        {"help", "Display this help message", help},
-        {"exit", "Exit the shell", NULL},
-        {"clear", "Clear the screen", clear_screen},
-        {"kdump", "Dump memory", NULL},
-        {"reboot", "Reboot the system", NULL},
-    };
- 
+    int i = 0;
+
     printf("jareste-OS> ");
     while (1)
     {
@@ -37,8 +77,8 @@ void kshell()
         if (c == 10)
         {
             char* buffer = get_kb_buffer();
-            buffer[strlen(buffer) - 1] = '\0';
-            for (int i = 0; i < sizeof(commands) / sizeof(command_t); i++)
+            buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+            for (i = 0; i < sizeof(commands) / sizeof(command_t); i++)
             {
                 if (strcmp(buffer, commands[i].cmd) == true)
                 {
@@ -46,36 +86,18 @@ void kshell()
                     {
                         commands[i].func();
                     }
+                    else
+                    {
+                        printf("Not implemented yet\n");
+                    }
                     break;
                 }
             }
-            
-            // if (strncmp(buffer, "exit", 5) == true)
-            // {
-            //     break;
-            // }
-            // else if (strncmp(buffer, "help", 5) == true)
-            // {
-            //     printf("Available commands:\n");
-            //     printf("  help: Display this help message\n");
-            //     printf("  exit: Exit the shell\n");
-            // }
-            // else if (strncmp(buffer, "clear", 5) == true)
-            // {
-            //     clear_screen();
-            // }
-            // else if (strncmp(buffer, "kdump", 4) == true)
-            // {
-            //     kdump((void*)VIDEO_MEMORY, 50);
-            // }
-            // else if (strncmp(buffer, "reboot", 6) == true)
-            // {
-            //     outb(0x64, 0xFE);
-            // }
-            // else
-            // {
-            //     printf("Unknown command: '%s'. Try 'help' for more info.\n", buffer);
-            // }
+            if (i == sizeof(commands) / sizeof(command_t))
+            {
+                printf("Command '%s' not found. Type 'help' for a list of available commands\n", buffer);
+            }
+
             clear_kb_buffer();
             printf("jareste-OS> ");
         }
