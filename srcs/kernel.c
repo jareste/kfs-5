@@ -15,13 +15,13 @@ void kernel_main()
 
     puts_color(BANNER, LIGHT_GREEN);
 
-    printf("\n|%x|\n", 0x12345678);
+    // printf("\n|%x|\n", 0x12345678);
 
-    put_hex(0x12345678);
+    // put_hex(0x12345678);
 
-    kdump(&BANNER, strlen(BANNER)); // Dump the memory of the banner
+    // kdump(&BANNER, strlen(BANNER)); // Dump the memory of the banner
 
-    kdump((void*)VIDEO_MEMORY, strlen(BANNER)); // Dump the video memory
+    // kdump((void*)VIDEO_MEMORY, strlen(BANNER)); // Dump the video memory
 
     enable_interrupts();
 

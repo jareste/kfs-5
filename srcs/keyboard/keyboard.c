@@ -174,19 +174,19 @@ void keyboard_handler()
     }
     else if (scancode == 0x4B) // Left Arrow
     {
-        move_cursor_left();
+        // move_cursor_left();
     }
     else if (scancode == 0x4D) // Right Arrow
     {
-        move_cursor_right();
+        // move_cursor_right();
     }
     else if (scancode == 0x48)
     {
-        move_cursor_up();
+        // move_cursor_up();
     }
     else if (scancode == 0x50) // Down Arrow
     {
-        move_cursor_down();
+        // move_cursor_down();
     }
     else if (scancode == 0x0F) // Tab
     {
