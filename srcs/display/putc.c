@@ -14,7 +14,7 @@ static void scroll_screen()
     for (int i = (SCREEN_HEIGHT - 1) * SCREEN_WIDTH * 2;\
             i < SCREEN_HEIGHT * SCREEN_WIDTH * 2; i += 2)
     {
-        video_memory[i] = ' ';
+        video_memory[i] = '\0';
         video_memory[i + 1] = LIGHT_GREY;
     }
 }
@@ -47,7 +47,7 @@ void clear_screen()
         for (int x = 0; x < SCREEN_WIDTH; x++)
         {
             int offset = (y * SCREEN_WIDTH + x) * 2;
-            video_memory[offset] = ' ';
+            video_memory[offset] = '\0';
             video_memory[offset + 1] = 0x07;
         }
     }

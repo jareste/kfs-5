@@ -18,6 +18,10 @@ void kernel_main()
 
     put_hex(0x12345678);
 
+    kdump(&BANNER, strlen(BANNER)); // Dump the memory of the banner
+
+    kdump((void*)VIDEO_MEMORY, strlen(BANNER)); // Dump the video memory
+
     enable_interrupts();
 
     /* Keep CPU busy */
