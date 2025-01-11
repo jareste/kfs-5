@@ -50,5 +50,8 @@ void gdt_init()
     /* User mode stack */
     gdt_set_entry(6, 0, 0xFFFFFFFF, 0xF6, 0xCF);
 
+    /* task state segment */
+    // gdt_set_entry(7, 0, 0xFFFFFFFF, 0x89, 0xCF);
+
     register_gdt();
 }

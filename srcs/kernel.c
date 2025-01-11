@@ -14,6 +14,9 @@ void kernel_main()
 
     puts_color(BANNER, LIGHT_GREEN);
 
+    printf("\n|%x|\n", 0x12345678);
+
+    put_hex(0x12345678);
 
     enable_interrupts();
 

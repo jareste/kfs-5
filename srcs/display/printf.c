@@ -60,6 +60,17 @@ int printf(const char *format, ...)
             arg = (void *)((unsigned int *)arg + 1);
             break;
 
+        case 'x':
+            i = *(int *)arg;
+            itoa(i, buffer, 16);
+            puts("0x");
+            for (char *p = buffer; *p != '\0'; p++)
+            {
+                putc(*p);
+            }
+            arg = (void *)((int *)arg + 1);
+            break;
+
         default:
             putc('%');
             putc(*traverse);

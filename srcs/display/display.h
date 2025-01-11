@@ -31,6 +31,9 @@ void putc_color(char c, uint8_t color);
 #define puts(str) puts_color(str, LIGHT_GREY)
 int puts_color(const char *str, uint8_t color);
 
+void kdump(void* addr, uint32_t size);
+int put_hex(uint32_t n);
+
 int printf(const char *format, ...);
 
 void outb(uint16_t port, uint8_t data);
