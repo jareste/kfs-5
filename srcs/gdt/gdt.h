@@ -1,7 +1,7 @@
 #ifndef GDT_H
 #define GDT_H
 
-#include <stdint.h>
+#include "../utils/stdint.h"
 
 /* https://wiki.osdev.org/GDT_Tutorial */
 #define GDT_ENTRIES 7

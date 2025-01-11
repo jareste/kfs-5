@@ -7,11 +7,8 @@
 void kernel_main()
 {
     clear_screen();
-    puts("Initializing GDT...\n");
 
     gdt_init();
-
-    puts("Initializing IDT...\n");
 
     init_interrupts();
 
