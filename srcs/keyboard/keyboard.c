@@ -110,7 +110,6 @@ char get_last_char()
 
     char c = keyboard_buffer[keyb_buff_start];
     keyb_buff_start = (keyb_buff_start + 1) % KEYBOARD_BUFFER_SIZE;
-    printf("|%d|", c);
     return c;
 }
 
@@ -124,6 +123,33 @@ char get_last_char_blocking()
 char* get_kb_buffer()
 {
     return keyboard_buffer;
+}
+
+static void set_kb_char(char c)
+{
+    keyboard_buffer[keyb_buff_end] = c;
+    
+    keyb_buff_end = (keyb_buff_end + 1) % KEYBOARD_BUFFER_SIZE;
+}
+
+static void delete_last_kb_char()
+{
+    if (keyb_buff_end == 0)
+    {
+        return;
+    }
+    else
+    {
+        keyb_buff_end--;
+    }
+    keyboard_buffer[keyb_buff_end] = 0;
+}
+
+void clear_kb_buffer()
+{
+    keyb_buff_start = 0;
+    keyb_buff_end = 0;
+    memset(keyboard_buffer, 0, KEYBOARD_BUFFER_SIZE);
 }
 
 void keyboard_handler()
@@ -186,6 +212,7 @@ void keyboard_handler()
             else
             {
                 delete_last_char();
+                delete_last_kb_char();
             }
         }
         else 
@@ -199,9 +226,7 @@ void keyboard_handler()
             if (key)
             {
                 putc(key);
-                printf("|%d|", key);
-                keyboard_buffer[keyb_buff_end] = key;
-                keyb_buff_end = (keyb_buff_end + 1) % KEYBOARD_BUFFER_SIZE;
+                set_kb_char(key);
             }
         }
     }
