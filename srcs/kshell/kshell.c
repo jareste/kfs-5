@@ -6,6 +6,8 @@ static void help();
 static void ks_kdump();
 static void reboot();
 static void kdump_stack();
+static void halt();
+static void hhalt();
 
 typedef struct
 {
@@ -24,7 +26,23 @@ static command_t commands[] = {
     {"kdump", "Dump memory", ks_kdump, false},
     {"stack", "Dump stack", kdump_stack, false},
     {"reboot", "Reboot the system", reboot, false},
+    {"halt", "Halt the system.", halt, false},
+    {"sudo halt", "Halt the system. (Stops it).", hhalt, true},  
 };
+
+static void halt()
+{
+    printf("Halting system...\n");
+    __asm__ __volatile__("hlt");
+    printf("System halted\n");
+}
+
+static void hhalt()
+{
+    printf("Halting system... Safe reboot now.\n");
+    __asm__ __volatile__("cli; hlt");
+    printf("System halted\n");
+}
 
 static void help()
 {
