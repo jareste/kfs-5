@@ -155,6 +155,7 @@ void clear_kb_buffer()
 void keyboard_handler()
 {
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
+    char key = 0;
 
     if (scancode == 0x2A || scancode == 0x36)
     {
@@ -198,7 +199,6 @@ void keyboard_handler()
     }
     else if (scancode < 128)
     {
-
         if (scancode == 0x01)
         {
             clear_screen();
@@ -217,7 +217,7 @@ void keyboard_handler()
         }
         else 
         {
-            char key = shift_pressed ? shifted_scancode_to_ascii[scancode] : scancode_to_ascii[scancode];
+            key = shift_pressed ? shifted_scancode_to_ascii[scancode] : scancode_to_ascii[scancode];
             if (ctrl_pressed && ((key == 'r') || (key == 'R')))
             {
                 clear_screen();
@@ -233,10 +233,6 @@ void keyboard_handler()
 
     outb(PIC1_COMMAND, PIC_EOI);
 }
-
-
-
-
 
 // void idt_init()
 // {

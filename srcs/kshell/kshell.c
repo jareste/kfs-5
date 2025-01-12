@@ -30,6 +30,8 @@ static command_t commands[] = {
     {"halt", "Halt the system.", halt, false},
     {"sudo halt", "Halt the system. (Stops it).", hhalt, true},
     {"colour", "Set shell colour", colour, false},
+    {"reg", "Dumps Registers", dump_registers, false},
+    {"panic", "Kernel Panic", kernel_panic, false},
 };
 
 static void colour()
