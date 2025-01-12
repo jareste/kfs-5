@@ -2,6 +2,7 @@
 #define DISPLAY_H
 
 #include "../utils/utils.h"
+#include "../io/io.h"
 
 #define VIDEO_MEMORY 0xb8000
 #define SCREEN_WIDTH 80
@@ -39,10 +40,6 @@ void kdump(void* addr, uint32_t size);
 int put_hex(uint32_t n);
 
 int printf(const char *format, ...);
-
-void outb(uint16_t port, uint8_t data);
-uint8_t inb(uint16_t port);
-void outw(uint16_t port, uint16_t data);
 
 
 void clear_screen();

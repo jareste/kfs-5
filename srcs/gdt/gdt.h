@@ -4,6 +4,7 @@
 #include "../utils/stdint.h"
 
 /* info from: https://wiki.osdev.org/GDT_Tutorial */
+/* To consider: https://samypesse.gitbook.io/how-to-create-an-operating-system/chapter-6 */
 #define GDT_ENTRIES 7
 #define GDT_ADDRESS 0x00000800
 

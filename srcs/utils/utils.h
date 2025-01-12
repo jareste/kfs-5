@@ -3,6 +3,7 @@
 
 #include "stdint.h"
 #define NULL 0
+#define UNUSED(x); (void)(x);
 
 typedef enum bool {
     false = 0,

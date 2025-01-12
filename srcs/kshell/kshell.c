@@ -1,6 +1,7 @@
 #include "../display/display.h"
 #include "../keyboard/keyboard.h"
 #include "../utils/utils.h"
+#include "../timers/timers.h"
 
 static void help();
 static void ks_kdump();
@@ -10,6 +11,7 @@ static void halt();
 static void hhalt();
 static void colour();
 static void shutdown();
+static void ksleep();
 
 typedef struct
 {
@@ -34,7 +36,22 @@ static command_t commands[] = {
     {"reg", "Dumps Registers", dump_registers, false},
     {"panic", "Kernel Panic", kernel_panic, false},
     {"shutdown", "Shutdown the system", shutdown, false},
+    {"sleep", "Sleeps the kernel for 'n' seconds", ksleep, false},
 };
+
+static void ksleep()
+{
+    printf("Enter the number of seconds to sleep: ");
+    clear_kb_buffer();
+    while (getc() != 10);
+    char* buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    uint32_t seconds = (uint32_t)hex_string_to_int(buffer);
+    printf("Sleeping for %d seconds...\n", seconds);
+    sleep(seconds);
+    printf("Woke up!\n");
+    clear_kb_buffer();
+}
 
 static void colour()
 {

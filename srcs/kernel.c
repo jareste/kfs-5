@@ -2,6 +2,7 @@
 #include "keyboard/idt.h"
 #include "gdt/gdt.h"
 #include "kshell/kshell.h"
+#include "timers/timers.h"
 
 void kernel_main()
 {
@@ -10,6 +11,7 @@ void kernel_main()
     gdt_init();
 
     init_interrupts();
+    init_timer();
 
     puts_color(BANNER, LIGHT_GREEN);
 

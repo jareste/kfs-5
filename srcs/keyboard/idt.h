@@ -4,6 +4,7 @@
 #include "../utils/stdint.h"
 
 /* https://wiki.osdev.org/Interrupt_Descriptor_Table */
+/* https://samypesse.gitbook.io/how-to-create-an-operating-system/chapter-7 */
 typedef struct __attribute__((packed)) idt_entry {
     uint16_t offset_low;
     uint16_t selector;

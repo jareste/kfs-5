@@ -15,12 +15,14 @@ OBJ_DIR = objs
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 
-vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard $(SRC_DIR)/gdt $(SRC_DIR)/idt $(SRC_DIR)/kshell
+vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard $(SRC_DIR)/gdt \
+			$(SRC_DIR)/idt $(SRC_DIR)/kshell $(SRC_DIR)/io $(SRC_DIR)/timers
 vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard $(SRC_DIR)/gdt $(SRC_DIR)/utils
 
 C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			idt.c itoa.c gdt.c put_hex.c kdump.c kshell.c memset.c strtol.c \
-			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c
+			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c \
+			io.c init_timers.c
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
