@@ -43,7 +43,7 @@ static command_t commands[] = {
 static void kuptime()
 {
     uint64_t uptime;
-    get_kuptime(&uptime);
+    uptime = get_kuptime();
     printf("Uptime: %d seconds\n", uptime);
 }
 
