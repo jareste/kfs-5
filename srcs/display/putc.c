@@ -34,6 +34,11 @@ void update_cursor(int position)
     outb(0x3D5, position & 0xFF);
 }
 
+void outw(uint16_t port, uint16_t data)
+{
+    __asm__ __volatile__("outw %0, %1" : : "a"(data), "Nd"(port));
+}
+
 void outb(uint16_t port, uint8_t data)
 {
 	__asm__("out %%al, %%dx" : :"a"(data), "d"(port));

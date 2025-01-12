@@ -9,6 +9,7 @@ static void kdump_stack();
 static void halt();
 static void hhalt();
 static void colour();
+static void shutdown();
 
 typedef struct
 {
@@ -32,6 +33,7 @@ static command_t commands[] = {
     {"colour", "Set shell colour", colour, false},
     {"reg", "Dumps Registers", dump_registers, false},
     {"panic", "Kernel Panic", kernel_panic, false},
+    {"shutdown", "Shutdown the system", shutdown, false},
 };
 
 static void colour()
@@ -132,6 +134,17 @@ static void ks_kdump()
 static void reboot()
 {
     outb(0x64, 0xFE);
+}
+
+static void shutdown()
+{
+    printf("Shutting down...\n");
+    
+    /* Delay for shutdown. */
+    for (int i = 0; i < 50; i++) __asm__ __volatile__("hlt");
+
+    /* QEMU-specific: sends shutdown signal to ACPI */
+    outw(0x604, 0x2000);
 }
 
 void kshell()
