@@ -52,7 +52,7 @@ void init_pit(uint32_t frequency)
     }
 
     /* CARE uint16!!! */
-    uint16_t divisor = PIT_BASE_FREQUENCY / frequency;
+    uint16_t divisor = PIT_BASE_FREQUENCY / (frequency - 1);
 
     // printf("PIT divisor: %d\n", divisor);
     outb(PIT_CONTROL_PORT, 0x36);
