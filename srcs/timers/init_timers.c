@@ -12,6 +12,7 @@
 #define SECONDS_TO_TICKS(x) (x * PIT_FREQUENCY)
 
 static uint32_t tick_count = 0;
+static uint64_t seconds = 0;
 
 void sleep(uint32_t seconds)
 {
@@ -28,10 +29,15 @@ void irq_handler_timer()
     tick_count++;
     if (tick_count % PIT_FREQUENCY == 0)
     {
-        // puts("1 second passed!\n");
+        seconds++;
     }
     /* I think i'm sending it somewhere else */
     outb(0x20, 0x20);
+}
+
+void get_uptime(uint64_t *uptime)
+{
+    *uptime = seconds;
 }
 
 void init_pit(uint32_t frequency)

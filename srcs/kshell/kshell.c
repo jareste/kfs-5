@@ -12,6 +12,7 @@ static void hhalt();
 static void colour();
 static void shutdown();
 static void ksleep();
+static void kuptime();
 
 typedef struct
 {
@@ -37,7 +38,15 @@ static command_t commands[] = {
     {"panic", "Kernel Panic", kernel_panic, false},
     {"shutdown", "Shutdown the system", shutdown, false},
     {"sleep", "Sleeps the kernel for 'n' seconds", ksleep, false},
+    {"uptime", "Get the system uptime in seconds.", kuptime, false},
 };
+
+static void kuptime()
+{
+    uint64_t uptime;
+    get_uptime(&uptime);
+    printf("Uptime: %d seconds\n", uptime);
+}
 
 static void ksleep()
 {
