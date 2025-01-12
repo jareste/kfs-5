@@ -8,6 +8,8 @@
 #define SCREEN_HEIGHT 25
 #define MAX_CURSOR_POSITION SCREEN_WIDTH * SCREEN_HEIGHT
 
+#define BANNER "Welcome to 42Barcelona's jareste- OS\n"
+
 #define BLACK           0x00
 #define BLUE            0x01
 #define GREEN           0x02

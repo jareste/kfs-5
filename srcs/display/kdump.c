@@ -15,15 +15,15 @@ void kdump(void* addr, uint32_t size)
         return;
     }
 
-    if ((uintptr_t)addr % 4 != 0)
-    {
-        printf("Invalid address: Unaligned\n");
-        return;
-    }
+    // if ((uintptr_t)addr % 4 != 0)
+    // {
+    //     printf("Invalid address: Unaligned\n");
+    //     return;
+    // }
 
     uint8_t* p = (uint8_t*)addr;
     uint32_t i = 0;
-    while (i < size)
+    while (i <= size)
     {
         if (i % 16 == 0)
         {
@@ -41,17 +41,25 @@ void kdump(void* addr, uint32_t size)
                 puts("|");
             }
             puts("\n");
-            kput_hex((uint32_t)(p + i));
-            puts(": ");
+            if (i < size)
+            {
+                kput_hex((uint32_t)(p + i));
+                puts(": ");
+            }
         }
 
-        kput_hex(p[i]);
-        puts(" ");
+        if (i < size)
+        {
+            kput_hex(p[i]);
+            puts(" ");
+        }
 
         i++;
     }
 
     uint32_t remainder = size % 16;
+    // printf("size: %d\n", size);
+    // printf("remainder: %d\n", remainder);
     if (remainder != 0)
     {
         for (uint32_t j = 0; j < (16 - remainder); j++)
@@ -59,8 +67,10 @@ void kdump(void* addr, uint32_t size)
             puts("   ");
         }
     }
+    
+    if (remainder > 0)
+        puts("  |");
 
-    puts("  |");
     for (uint32_t j = size - remainder; j < size; j++)
     {
         uint8_t c = p[j];
@@ -69,7 +79,10 @@ void kdump(void* addr, uint32_t size)
         else
             putc('.');
     }
-    puts("|");
-
-    puts("\n");
+    
+    if (remainder > 0)
+    {
+        puts("|");
+        puts("\n");
+    }
 }

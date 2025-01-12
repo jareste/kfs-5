@@ -3,8 +3,6 @@
 #include "gdt/gdt.h"
 #include "kshell/kshell.h"
 
-#define BANNER "Welcome to 42Barcelona's jareste- OS\n"
-
 void kernel_main()
 {
     clear_screen();

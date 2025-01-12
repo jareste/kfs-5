@@ -10,7 +10,7 @@ extern void gdt_flush();
 void register_gdt(void)
 {
     gdt_ptr->base = (uint32_t) &gdt;
-    gdt_ptr->limit = (GDT_ENTRIES * sizeof(gdt)) - 1;
+    gdt_ptr->limit = (GDT_ENTRIES * sizeof(gdt_entry_t)) - 1;
     __asm__ __volatile__("lgdtl (%0)" : : "r" (gdt_ptr));
     gdt_flush();
 }
@@ -25,7 +25,6 @@ void gdt_set_entry(int index, uint32_t base, uint32_t limit, uint8_t access, uin
     gdt[index].granularity |= (granularity & 0xF0);
     gdt[index].access = access;
 }
-
 
 void gdt_init()
 {

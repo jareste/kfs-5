@@ -5,20 +5,25 @@
 static void help();
 static void ks_kdump();
 static void reboot();
+static void kdump_stack();
 
 typedef struct
 {
     const char* cmd;
     const char* desc;
     void (*func)();
+    bool hidden;
 } command_t;
 
 static command_t commands[] = {
-    {"help", "Display this help message", help},
-    {"exit", "Exit the shell", NULL},
-    {"clear", "Clear the screen", clear_screen},
-    {"kdump", "Dump memory", ks_kdump},
-    {"reboot", "Reboot the system", reboot},
+    {"help", "Display this help message", help, false},
+    {"?", "", help, true},
+    {"h", "", help, true},
+    {"exit", "Exit the shell", NULL, false},
+    {"clear", "Clear the screen", clear_screen, false},
+    {"kdump", "Dump memory", ks_kdump, false},
+    {"stack", "Dump stack", kdump_stack, false},
+    {"reboot", "Reboot the system", reboot, false},
 };
 
 static void help()
@@ -27,12 +32,23 @@ static void help()
     
     for (int i = 0; i < sizeof(commands) / sizeof(command_t); i++)
     {
+        if (commands[i].hidden)
+            continue;
+
         printf("  %s: %s\n", commands[i].cmd, commands[i].desc);
     }
 }
 
+static void kdump_stack()
+{
+    kdump((void*)get_stack_pointer(), 256);
+}
+
 static void ks_kdump()
 {
+    printf("Known addresses:\n");
+    printf("  VIDEO_MEMORY: %x\n", VIDEO_MEMORY);
+    printf("  BANNER: %x\n", &BANNER);
     printf("Enter the address to dump: ");
     clear_kb_buffer();
     while (getc() != 10);

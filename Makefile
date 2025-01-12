@@ -20,7 +20,7 @@ vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard $(SRC_DIR)/gdt
 
 C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			idt.c itoa.c gdt.c put_hex.c kdump.c kshell.c memset.c strtol.c \
-			hatoi.c
+			hatoi.c get_stack_pointer.c
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
