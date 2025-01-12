@@ -8,6 +8,7 @@ static void reboot();
 static void kdump_stack();
 static void halt();
 static void hhalt();
+static void colour();
 
 typedef struct
 {
@@ -27,8 +28,39 @@ static command_t commands[] = {
     {"stack", "Dump stack", kdump_stack, false},
     {"reboot", "Reboot the system", reboot, false},
     {"halt", "Halt the system.", halt, false},
-    {"sudo halt", "Halt the system. (Stops it).", hhalt, true},  
+    {"sudo halt", "Halt the system. (Stops it).", hhalt, true},
+    {"colour", "Set shell colour", colour, false},
 };
+
+static void colour()
+{
+    printf("Available colours:\n");
+    printf("  0: BLACK\n");
+    printf("  1: BLUE\n");
+    printf("  2: GREEN\n");
+    printf("  3: CYAN\n");
+    printf("  4: RED\n");
+    printf("  5: MAGENTA\n");
+    printf("  6: BROWN\n");
+    printf("  7: LIGHT_GREY\n");
+    printf("  8: DARK_GREY\n");
+    printf("  9: LIGHT_BLUE\n");
+    printf("  A: LIGHT_GREEN\n");
+    printf("  B: LIGHT_CYAN\n");
+    printf("  C: LIGHT_RED\n");
+    printf("  D: LIGHT_MAGENTA\n");
+    printf("  E: LIGHT_BROWN\n");
+    printf("  F: WHITE\n");
+    printf("Enter the colour: ");
+    clear_kb_buffer();
+    while (getc() != 10);
+    char* buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    uint32_t colour = (uint32_t)hex_string_to_int(buffer);
+    printf("Colour: %x\n", colour);
+    set_putchar_colour(colour);
+    clear_kb_buffer();
+}
 
 static void halt()
 {

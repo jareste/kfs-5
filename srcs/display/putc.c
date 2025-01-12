@@ -2,6 +2,13 @@
 
 static int cursor_position = 0;
 
+static int colour = LIGHT_GREY;
+
+void set_putchar_colour(uint8_t c)
+{
+    colour = c;
+}
+
 static void scroll_screen()
 {
     char *video_memory = (char *)VIDEO_MEMORY;
@@ -168,4 +175,9 @@ void putc_color(char c, uint8_t color)
         cursor_position -= SCREEN_WIDTH;
         update_cursor(cursor_position);
     }
+}
+
+void putc(char c)
+{
+    putc_color(c, colour);
 }

@@ -27,10 +27,12 @@
 #define LIGHT_BROWN     0x0E
 #define WHITE           0x0F
 
-#define putc(c) putc_color(c, LIGHT_GREY)
+void set_putchar_colour(uint8_t c);
+
+void putc(char c);
 void putc_color(char c, uint8_t color);
 
-#define puts(str) puts_color(str, LIGHT_GREY)
+int puts(const char *str);
 int puts_color(const char *str, uint8_t color);
 
 void kdump(void* addr, uint32_t size);
