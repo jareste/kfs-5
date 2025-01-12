@@ -19,32 +19,31 @@ typedef struct
     const char* cmd;
     const char* desc;
     void (*func)();
-    bool hidden;
 } command_t;
 
 static command_t commands[] = {
-    {"help", "Display this help message", help, false},
-    {"?", "", help, true},
-    {"h", "", help, true},
-    {"exit", "Exit the shell", NULL, false},
-    {"clear", "Clear the screen", clear_screen, false},
-    {"kdump", "Dump memory", ks_kdump, false},
-    {"stack", "Dump stack", kdump_stack, false},
-    {"reboot", "Reboot the system", reboot, false},
-    {"halt", "Halt the system.", halt, false},
-    {"sudo halt", "Halt the system. (Stops it).", hhalt, true},
-    {"colour", "Set shell colour", colour, false},
-    {"reg", "Dumps Registers", dump_registers, false},
-    {"panic", "Kernel Panic", kernel_panic, false},
-    {"shutdown", "Shutdown the system", shutdown, false},
-    {"sleep", "Sleeps the kernel for 'n' seconds", ksleep, false},
-    {"uptime", "Get the system uptime in seconds.", kuptime, false},
+    {"help", "Display this help message", help},
+    {"?", NULL, help},
+    {"h", NULL, help},
+    {"exit", "Exit the shell", NULL},
+    {"clear", "Clear the screen", clear_screen},
+    {"kdump", "Dump memory", ks_kdump},
+    {"stack", "Dump stack", kdump_stack},
+    {"reboot", "Reboot the system", reboot},
+    {"halt", "Halt the system.", halt},
+    {"sudo halt", "Halt the system. (Stops it).", hhalt},
+    {"colour", "Set shell colour", colour},
+    {"reg", "Dumps Registers", dump_registers},
+    {"panic", "Kernel Panic", kernel_panic},
+    {"shutdown", "Shutdown the system", shutdown},
+    {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
+    {"uptime", "Get the system uptime in seconds.", kuptime},
 };
 
 static void kuptime()
 {
     uint64_t uptime;
-    get_uptime(&uptime);
+    get_kuptime(&uptime);
     printf("Uptime: %d seconds\n", uptime);
 }
 
@@ -112,7 +111,7 @@ static void help()
     
     for (int i = 0; i < sizeof(commands) / sizeof(command_t); i++)
     {
-        if (commands[i].hidden)
+        if (commands[i].desc == NULL)
             continue;
 
         printf("  %s: %s\n", commands[i].cmd, commands[i].desc);

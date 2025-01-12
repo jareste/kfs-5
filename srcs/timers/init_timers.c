@@ -35,7 +35,7 @@ void irq_handler_timer()
     outb(0x20, 0x20);
 }
 
-void get_uptime(uint64_t *uptime)
+void get_kuptime(uint64_t *uptime)
 {
     *uptime = seconds;
 }
