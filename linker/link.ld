@@ -7,10 +7,12 @@ SECTIONS {
 
     .text : { *(.text) }
 
-    .data : { *(.data) }
+    .data ALIGN (0x1000) : { *(.data) }
 
     .bss : {
         *(.bss)
         *(COMMON)
+        ebss = .;
+        endkernel = .;
     }
 }

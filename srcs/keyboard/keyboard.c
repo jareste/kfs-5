@@ -272,7 +272,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(stack)
     UNUSED(err_code)
     UNUSED(intr_no)
-    puts("Interrupt handler entered\n");
+    // puts("Interrupt handler entered\n");
 	// while (1)
 	// {
 		

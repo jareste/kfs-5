@@ -3,6 +3,9 @@
 #include "gdt/gdt.h"
 #include "kshell/kshell.h"
 #include "timers/timers.h"
+#include "memory/memory.h"
+
+extern uint32_t endkernel;
 
 void kernel_main()
 {
@@ -24,6 +27,47 @@ void kernel_main()
     // kdump((void*)VIDEO_MEMORY, strlen(BANNER)); // Dump the video memory
 
     enable_interrupts();
+    // init_paging();
+
+    // void*test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+
+    // test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+    // test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+    // test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+    // test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+    // test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+    // test = kmalloc(0x1000);
+    // if (test == NULL)
+    // {
+    //     puts("kmalloc failed\n");
+    // }
+
+    kdump(&endkernel, 0x10);
+    printf("Kernel end: %x\n", &endkernel);
 
     kshell();
     printf("Exiting shell...\n");
