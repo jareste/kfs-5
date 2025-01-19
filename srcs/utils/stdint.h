@@ -42,6 +42,8 @@ typedef unsigned int uintptr_t;
 typedef long long int intmax_t;
 typedef unsigned long long int uintmax_t;
 
+typedef unsigned long size_t;
+
 /* Limits of exact-width integer types */
 #define INT8_MIN (-128)
 #define INT16_MIN (-32768)

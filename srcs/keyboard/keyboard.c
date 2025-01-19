@@ -266,13 +266,30 @@ void disable_interrupts(void)
 	__asm__ __volatile__("cli");
 }
 
+void page_fault_handler(registers* regs, error_state* stack)
+{
+    uint32_t faulting_address;
+    __asm__ __volatile__("mov %%cr2, %0" : "=r"(faulting_address));
+
+    printf("Page fault at 0x");
+    put_hex(faulting_address);
+    putc('\n');
+    printf("Error code: 0x");
+    put_hex(stack->err_code);
+    putc('\n');
+
+    while (1); // Halt to debug
+}
+
 void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {
 	UNUSED(reg)
     UNUSED(stack)
     UNUSED(err_code)
     UNUSED(intr_no)
-    // puts("Interrupt handler entered\n");
+    printf("Interrupt number: %d\n", intr_no);
+    if (intr_no == 13)
+        page_fault_handler(&reg, &stack);
 	// while (1)
 	// {
 		
@@ -291,11 +308,13 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
 	{
 		keyboard_handler();
 	}
-    if (intr_no == 0)
+    else if (intr_no == 0)
     {
         irq_handler_timer();
         // timer_handler();
     }
+    else
+        printf("Interrupt number: %d\n", intr_no);
 	// while (1)
 	// {
 		

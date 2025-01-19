@@ -70,6 +70,12 @@ int printf(const char *format, ...)
             }
             arg = (void *)((int *)arg + 1);
             break;
+        case 'p':
+            i = *(int *)arg;
+            puts("0x");
+            put_hex(i);
+            arg = (void *)((int *)arg + 1);
+            break;
 
         default:
             putc('%');
