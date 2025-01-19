@@ -289,7 +289,7 @@ void page_fault_handler(registers* regs, error_state* stack)
 
 
     // dump_page_directory();
-    // debug_page_mapping(faulting_address);
+    debug_page_mapping(faulting_address);
 
     while (1); // Halt to debug
 }

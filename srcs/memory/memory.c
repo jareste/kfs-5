@@ -4,9 +4,10 @@
 #include "memory.h"
 #include "mem_utils.h"
 #include "../utils/utils.h"
+#include "pmm.h"
 
 extern uint32_t endkernel;
-#define HEAP_START ((uintptr_t)&endkernel + 0x10000) // Start heap 4 KB after kernel
+#define HEAP_START ((uintptr_t)&endkernel + 0x4000) // Start heap 4 KB after kernel
 
 // #define HEAP_START  0x100000  /* Start of the heap */
 // #define HEAP_START ((uintptr_t)&endkernel)
@@ -108,7 +109,8 @@ void paging_init()
 }
 
 
-#define MAX_HEAP_SIZE (100 * 1024 * 1024) // 100 MB heap
+
+#define MAX_HEAP_SIZE (27 * 1024 * 1024) // 100 MB heap
 
 void* kbrk(void* addr)
 {
@@ -134,14 +136,23 @@ void* kbrk(void* addr)
             //     return (void*)-1;
             // }
 
-            page_table_t* new_page_table = (page_table_t*)ALIGN((uintptr_t)kmalloc(sizeof(page_table_t)));
-            if (!new_page_table || ((uintptr_t)new_page_table % PAGE_SIZE != 0)) {
-                printf("Misaligned or failed allocation for page table: %p\n", new_page_table);
-                return (void*)-1;
-            }
+            // page_table_t* new_page_table = (page_table_t*)ALIGN((uintptr_t)kmalloc(sizeof(page_table_t)));
+            // if (!new_page_table || ((uintptr_t)new_page_table % PAGE_SIZE != 0)) {
+            //     printf("Misaligned or failed allocation for page table: %p\n", new_page_table);
+            //     return (void*)-1;
+            // }
 
-            memset(new_page_table, 0, sizeof(page_table_t));
-            page_directory[page_directory_index] = ((uint32_t)new_page_table) | 0x03; // Mark present + RW
+            // memset(new_page_table, 0, sizeof(page_table_t));
+            // page_directory[page_directory_index] = ((uint32_t)new_page_table) | 0x03; // Mark present + RW
+
+
+            uint32_t pt_phys = allocate_frame();
+            if (!pt_phys) { /* out of memory error */ }
+            memset((void*)pt_phys, 0, PAGE_SIZE); // if identity mapped
+
+            page_directory[page_directory_index] = pt_phys | (PAGE_PRESENT | PAGE_RW);
+
+
         }
 
         // Map the page in the page table
@@ -386,9 +397,9 @@ static void test_dynamic_heap_growth()
     void* block1 = kmalloc(64);
     printf("Allocated block1: %p\n", block1);
 
-    // void* large_block = kmalloc(2 * 1024 * 1024); // Allocate 10 MB
+    void* large_block = kmalloc(26 * 1024 * 1024); // Allocate 10 MB
     
-    void* large_block = kmalloc(0x200000); // Allocate 10 MB
+    // void* large_block = kmalloc(0x200000); // Allocate 10 MB
     if (large_block)
     {
         printf("Allocated large_block: %p\n", large_block);
@@ -396,11 +407,24 @@ static void test_dynamic_heap_growth()
         putc('\n');
         put_hex(2 * 1024 * 1024);
         putc('\n');
+        for (int i = 0; i < 26 * 1024 * 1024; i++)
+        {
+            ((char*)large_block)[i] = 'A';
+        }
+        ((char*)large_block)[26 * 1024 * 1024 - 1] = '\0';
+        puts_color(large_block + (26 * 1024 * 1024 -10), GREEN);
     }
     else
     {
         puts_color("Failed to allocate large block\n", RED);
     }
+
+    printf("Heap_end: %p\n", heap_end);
+    void* test = kmalloc(0x100000); // Allocate 4 KB
+
+    printf("Allocated test: %p, size: 0x", test);
+    put_hex(ksize(test));
+    putc('\n');
 
     printf("New heap_end: %p\n", heap_end);
 
@@ -467,6 +491,9 @@ void debug_page_mapping(uint32_t address)
     uint32_t page_directory_index = address / (PAGE_SIZE * PAGE_TABLE_ENTRIES);
     uint32_t page_table_index = (address % (PAGE_SIZE * PAGE_TABLE_ENTRIES)) / PAGE_SIZE;
 
+    putc('\n');
+    put_hex(address);
+    putc('\n');
     printf("Address: %x\n", address);
     // printf("Page Directory Index: %d, Entry: %x\n", page_directory_index, page_directory[page_directory_index]);
     printf("Page Directory Index: %d, Page Table Index: %d, Entry: %x\n",\
