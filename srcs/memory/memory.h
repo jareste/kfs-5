@@ -10,15 +10,14 @@
 #define PAGE_WRITE 0x2
 #define PAGE_USER 0x4
 
-typedef struct {
-    uint32_t entries[PAGE_DIRECTORY_ENTRIES];
-} page_directory_t;
+// typedef struct {
+//     uint32_t entries[PAGE_DIRECTORY_ENTRIES];
+// } page_directory_t;
 
-typedef struct {
-    uint32_t entries[PAGE_TABLE_ENTRIES];
-} page_table_t;
+// typedef struct {
+//     uint32_t entries[PAGE_TABLE_ENTRIES];
+// } page_table_t;
 
-void init_paging();
-void* kmalloc(uint32_t size);
+void paging_init();
 
 #endif // MEMORY_H
