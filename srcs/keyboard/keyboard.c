@@ -278,8 +278,17 @@ void page_fault_handler(registers* regs, error_state* stack)
     put_hex(stack->err_code);
     putc('\n');
 
+    // Decode error code
+    printf("Error type: ");
+    if (!(stack->err_code & 0x1)) printf("Non-present page ");
+    if (stack->err_code & 0x2) printf("Write ");
+    else printf("Read ");
+    if (stack->err_code & 0x4) printf("User-mode\n");
+    else printf("Kernel-mode\n");
+
     while (1); // Halt to debug
 }
+
 
 void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {
@@ -288,7 +297,9 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(err_code)
     UNUSED(intr_no)
     printf("Interrupt S number: %d\n", intr_no);
-    if (intr_no == 13)
+    if (intr_no == 14) /* Page fault */
+        page_fault_handler(&reg, &stack);
+    else if (intr_no == 13) /* General protection fault */
         page_fault_handler(&reg, &stack);
 	outb(PIC_EOI, PIC1_COMMAND);
 	// while (1)

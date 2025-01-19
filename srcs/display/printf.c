@@ -76,6 +76,11 @@ int printf(const char *format, ...)
             put_hex(i);
             arg = (void *)((int *)arg + 1);
             break;
+        case 'z':
+            i = *(size_t *)arg;
+            put_zu(i);
+            arg = (void *)((size_t *)arg + 1);
+            break;
 
         default:
             putc('%');
