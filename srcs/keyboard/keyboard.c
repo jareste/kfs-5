@@ -3,6 +3,7 @@
 #include "../io/io.h"
 #include "../timers/timers.h"
 #include "idt.h"
+#include "../memory/memory.h"
 
 #define KEYBOARD_DATA_PORT 0x60
 #define PIC1_COMMAND 0x20
@@ -285,6 +286,10 @@ void page_fault_handler(registers* regs, error_state* stack)
     else printf("Read ");
     if (stack->err_code & 0x4) printf("User-mode\n");
     else printf("Kernel-mode\n");
+
+
+    // dump_page_directory();
+    // debug_page_mapping(faulting_address);
 
     while (1); // Halt to debug
 }

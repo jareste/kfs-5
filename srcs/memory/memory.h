@@ -18,4 +18,8 @@ void* kmalloc(size_t size);
 size_t ksize(void* ptr);
 void heap_init();
 
+void dump_page_directory();
+void debug_page_mapping(uint32_t address);
+
+
 #endif // MEMORY_H
