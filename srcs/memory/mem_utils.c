@@ -67,7 +67,7 @@ void* kmalloc(size_t size)
     block_header_t* new_block = (block_header_t*)heap_end;
     if ((void*)((char*)heap_end + sizeof(block_header_t) + size) > (void*)(HEAP_START + HEAP_SIZE))
     {
-        puts("Out of memory!\n");
+        puts_color("WARNING: Out of memory!\n", RED);
         return NULL;
     }
 
@@ -125,13 +125,13 @@ void heap_init()
 
     heap_end = (void*)HEAP_START;
 
-    install_command("test_mem", "Test memory allocation", test_mem);
+    install_command("tmem", "Test memory allocation", test_mem);
 }
 
 static void test_mem()
 {
-    void* block1 = (void*)0x10000C; // Test for SEGV. And it works! (no SEGV)
-    // void* block1 = kmalloc(64);
+    // void* block1 = (void*)0x10000C; // Test for SEGV. And it works! (no SEGV)
+    void* block1 = kmalloc(64);
     printf("Allocated block1: %p\n", block1);
     printf("Size of block1: %d\n", ksize(block1));
     for (int i = 0; i < 64; i++)
@@ -141,13 +141,21 @@ static void test_mem()
     ((char*)block1)[63] = '\0';
     printf("Block1: %s\n", block1);
     
-    void* block2 = kmalloc(128);
+    void* block2 = kmalloc(0x100000);
+    
     printf("Allocated block2: %p\n", block2);
+    // while (1);
 
     printf("Size of block2: %d\n", ksize(block2));
 
-    kfree(block1);
     kfree(block2);
+
+    block2 = kmalloc(0x10000);
+    printf("Reallocated block2: %p\n", block2);
+    printf("Size of block2: %d\n", ksize(block2));
+    kfree(block2);
+
+    kfree(block1);
 
     printf("Memory freed\n");
 }

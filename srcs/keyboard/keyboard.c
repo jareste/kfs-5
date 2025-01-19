@@ -287,9 +287,10 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(stack)
     UNUSED(err_code)
     UNUSED(intr_no)
-    printf("Interrupt number: %d\n", intr_no);
+    printf("Interrupt S number: %d\n", intr_no);
     if (intr_no == 13)
         page_fault_handler(&reg, &stack);
+	outb(PIC_EOI, PIC1_COMMAND);
 	// while (1)
 	// {
 		
@@ -314,7 +315,10 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
         // timer_handler();
     }
     else
-        printf("Interrupt number: %d\n", intr_no);
+    {
+        printf("Interrupt Q number: %d\n", intr_no);
+        while (1);
+    }
 	// while (1)
 	// {
 		
