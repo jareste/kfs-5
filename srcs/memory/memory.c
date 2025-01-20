@@ -14,6 +14,10 @@ extern uint32_t endkernel;
 #define HEAP_SIZE_  0x100000  /* 1 MB heap size */
 #define ALIGN(x) (((x) + 0xFFF) & ~0xFFF) /* 4 KB alignment */
 
+#define MB(x) (x * 1024 * 1024)
+
+#define MAX_HEAP_SIZE (27 * 1024 * 1024) // 100 MB heap
+
 typedef struct block_header {
     size_t size;               /* Size of the block (excluding header) */
     struct block_header* next; /* Pointer to the next free block */
@@ -28,7 +32,23 @@ static void test_mem();
 static void test_dynamic_heap_growth();
 static void dump_page_table();
 void dump_page_directory();
+static void m_force_page_fault_write();
+static void m_force_page_fault_ro();
+void debug_page_mapping(uint32_t address);
+static void K2();
+static void show_allocations();
 
+static command_t commands[] = {
+    {"f pfw", "Force a page fault by writing to an unmapped address", m_force_page_fault_write},
+    {"f pfro", "Force a page fault by writing to a read-only page", m_force_page_fault_ro},
+    {"dump pt", "Dump page table", dump_page_table},
+    {"dump pd", "Dump page directory", dump_page_directory},
+    {"tmem", "Test memory allocation", test_mem},
+    {"theap", "Test dynamic heap growth", test_dynamic_heap_growth},
+    {"mem2", "Allocate 2 MB. No Free", K2},
+    {"show alloc", "Show allocated memory", show_allocations},
+    {NULL, NULL, NULL}
+};
 
 typedef uint32_t page_directory_t[PAGE_DIRECTORY_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 typedef uint32_t page_table_t[PAGE_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -103,32 +123,26 @@ void paging_init()
     __asm__ __volatile__("mov %%cr0, %0" : "=r"(cr0));
     cr0 |= 0x80000000; // Enable paging
     __asm__ __volatile__("mov %0, %%cr0" : : "r"(cr0));
-
-    install_command("f pfw", "Force a page fault by writing to an unmapped address", m_force_page_fault_write);
-    install_command("f pfro", "Force a page fault by writing to a read-only page", m_force_page_fault_ro);
 }
-
-
-
-#define MAX_HEAP_SIZE (27 * 1024 * 1024) // 100 MB heap
 
 void* kbrk(void* addr)
 {
     if ((uintptr_t)addr > HEAP_START + MAX_HEAP_SIZE)
     {
-        puts_color("Heap exceeds maximum limit!\n", RED);
+        puts_color("WARNING: Heap exceeds maximum limit!\n", RED);
         return (void*)-1;
     }
 
     uint32_t new_heap_end = ALIGN((uintptr_t)addr);
     uint32_t current_heap_end = ALIGN((uintptr_t)heap_end);
 
-    while (current_heap_end < new_heap_end) {
+    while (current_heap_end < new_heap_end)
+    {
         uint32_t page_directory_index = current_heap_end / (PAGE_SIZE * PAGE_TABLE_ENTRIES);
         uint32_t page_table_index = (current_heap_end % (PAGE_SIZE * PAGE_TABLE_ENTRIES)) / PAGE_SIZE;
 
-        if (!(page_directory[page_directory_index] & 0x1)) {
-            printf("Page directory %d not present, creating...\n", page_directory_index);
+        if (!(page_directory[page_directory_index] & 0x1))
+        {
             // Allocate a page table, ensure alignment
             // page_table_t* new_page_table = (page_table_t*)ALIGN((uintptr_t)kmalloc(sizeof(page_table_t)));
             // if (!new_page_table) {
@@ -157,7 +171,8 @@ void* kbrk(void* addr)
 
         // Map the page in the page table
         page_table_t* table = (page_table_t*)(page_directory[page_directory_index] & ~0xFFF);
-        if (!((*table)[page_table_index] & 0x1)) {
+        if (!((*table)[page_table_index] & 0x1))
+        {
             (*table)[page_table_index] = current_heap_end | 0x03; // Present + RW
         }
 
@@ -190,31 +205,21 @@ void* kmalloc(size_t size)
     block_header_t* current = free_list;
     block_header_t* prev = NULL;
 
-    printf("Searching for a block of size %z\n", size);
-
     /* Search for a suitable free block */
     while (current)
     {
-        printf("Current block: %p, size: %z, free: %d\n", current, current->size, current->free);
-
         if (current->free && current->size >= size)
         {
             current->free = 0;
 
-            printf("Found suitable block: %p\n", current);
-            printf("Block size: %z, Requested size: %z\n", current->size, size);
-
             /* Split the block if it's too large */
             if (current->size > size + sizeof(block_header_t))
             {
-                printf("Splitting block\n");
                 block_header_t* new_block = (void*)((char*)current + sizeof(block_header_t) + size);
 
                 /* Ensure the new block address is valid within the heap */
                 if ((uintptr_t)new_block + sizeof(block_header_t) > (uintptr_t)heap_end)
                 {
-                    printf("New block address exceeds heap bounds, requesting more memory\n");
-
                     /* Request more memory for the heap */
                     if (kbrk((void*)((uintptr_t)new_block + sizeof(block_header_t))) == (void*)-1)
                     {
@@ -230,8 +235,6 @@ void* kmalloc(size_t size)
 
                 current->size = size;
                 current->next = new_block;
-
-                printf("New block created at %p with size %z\n", new_block, new_block->size);
             }
 
             return (void*)((char*)current + sizeof(block_header_t));
@@ -241,14 +244,11 @@ void* kmalloc(size_t size)
         current = current->next;
     }
 
-    printf("No suitable block found for size %z, expanding heap\n", size);
-
     /* No suitable block found, expand the heap */
     block_header_t* new_block = (block_header_t*)heap_end;
     void* new_heap_end = (void*)((char*)heap_end + sizeof(block_header_t) + size);
 
     /* Request more heap space via kbrk */
-    printf("Requesting more heap space until %p\n", new_heap_end);
     if (kbrk(new_heap_end) == (void*)-1)
     {
         puts_color("WARNING: Out of memory!\n", RED);
@@ -327,11 +327,10 @@ void heap_init()
     printf("Heap starts at: %p\n", HEAP_START);
     printf("Heap size: %z bytes\n", HEAP_SIZE_);
 
-    install_command("dump pt", "Dump page table", dump_page_table);
-    install_command("dump pd", "Dump page directory", dump_page_directory);
-    install_command("tmem", "Test memory allocation", test_mem);
-    install_command("theap", "Test dynamic heap growth", test_dynamic_heap_growth);
+    install_all_cmds(commands);
 }
+
+/* MEM TESTS */
 
 void dump_page_directory()
 {
@@ -360,13 +359,11 @@ void dump_page_directory()
         }
     }
 
-    page_table_t* table = (page_table_t*)(page_directory[0] & ~0xFFF);
+    // page_table_t* table = (page_table_t*)(page_directory[0] & ~0xFFF);
 
-    printf("Table[%d][%d]: %x\n", 0, 0, (*table)[0]);
+    // printf("Table[%d][%d]: %x\n", 0, 0, (*table)[0]);
 
 }
-
-void debug_page_mapping(uint32_t address);
 
 static void dump_page_table(uint32_t directory_index)
 {
@@ -389,6 +386,10 @@ static void dump_page_table(uint32_t directory_index)
     // }
 }
 
+void K2()
+{
+    kmalloc(2 * 1024 * 1024);
+}
 
 static void test_dynamic_heap_growth()
 {
@@ -397,7 +398,11 @@ static void test_dynamic_heap_growth()
     void* block1 = kmalloc(64);
     printf("Allocated block1: %p\n", block1);
 
-    void* large_block = kmalloc(26 * 1024 * 1024); // Allocate 10 MB
+
+    size_t malloc_size = MB(2);
+    void* large_block = kmalloc(malloc_size); // Allocate 10 MB
+    // void* large_block = kmalloc(2); // Allocate 10 MB
+    // large_block = kmalloc(2); // Allocate 10 MB
     
     // void* large_block = kmalloc(0x200000); // Allocate 10 MB
     if (large_block)
@@ -405,26 +410,27 @@ static void test_dynamic_heap_growth()
         printf("Allocated large_block: %p\n", large_block);
         put_hex(ksize(large_block));
         putc('\n');
-        put_hex(2 * 1024 * 1024);
+        put_hex(malloc_size);
         putc('\n');
-        for (int i = 0; i < 26 * 1024 * 1024; i++)
+        for (int i = 0; i < malloc_size; i++)
         {
             ((char*)large_block)[i] = 'A';
         }
-        ((char*)large_block)[26 * 1024 * 1024 - 1] = '\0';
-        puts_color(large_block + (26 * 1024 * 1024 -10), GREEN);
+        ((char*)large_block)[malloc_size - 1] = '\0';
+        puts_color(large_block + (malloc_size -10), GREEN);
+        putc('\n');
     }
     else
     {
-        puts_color("Failed to allocate large block\n", RED);
+        puts_color("WARNING: Failed to allocate large block\n", RED);
     }
 
-    printf("Heap_end: %p\n", heap_end);
-    void* test = kmalloc(0x100000); // Allocate 4 KB
+    // printf("Heap_end: %p\n", heap_end);
+    // void* test = kmalloc(0x100000); // Allocate 4 KB
 
-    printf("Allocated test: %p, size: 0x", test);
-    put_hex(ksize(test));
-    putc('\n');
+    // printf("Allocated test: %p, size: 0x", test);
+    // put_hex(ksize(test));
+    // putc('\n');
 
     printf("New heap_end: %p\n", heap_end);
 
@@ -485,7 +491,6 @@ static void test_mem()
     printf("Memory freed\n");
 }
 
-
 void debug_page_mapping(uint32_t address)
 {
     uint32_t page_directory_index = address / (PAGE_SIZE * PAGE_TABLE_ENTRIES);
@@ -507,5 +512,16 @@ void debug_page_mapping(uint32_t address)
     else
     {
         printf("Page directory entry %d not present\n", page_directory_index);
+    }
+}
+
+static void show_allocations()
+{
+    block_header_t* current = free_list;
+    printf("Heap Allocations:\n");
+    while (current)
+    {
+        printf("Block at %p: size = %zu, free = %d\n", (void*)current, current->size, current->free);
+        current = current->next;
     }
 }

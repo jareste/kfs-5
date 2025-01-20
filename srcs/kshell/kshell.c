@@ -2,6 +2,7 @@
 #include "../keyboard/keyboard.h"
 #include "../utils/utils.h"
 #include "../timers/timers.h"
+#include "kshell.h"
 
 static void help();
 static void ks_kdump();
@@ -14,37 +15,33 @@ static void shutdown();
 static void ksleep();
 static void kuptime();
 
-typedef struct
-{
-    const char* cmd;
-    const char* desc;
-    void (*func)();
-} command_t;
+#define MAX_COMMANDS 256
 
-static command_t commands[256];
+static command_t commands[MAX_COMMANDS]; /* Maximum CLI cmds */
 
-// static command_t commands[] = {
-//     {"help", "Display this help message", help},
-//     {"?", NULL, help},
-//     {"h", NULL, help},
-//     {"exit", "Exit the shell", NULL},
-//     {"clear", "Clear the screen", clear_screen},
-//     {"kdump", "Dump memory", ks_kdump},
-//     {"stack", "Dump stack", kdump_stack},
-//     {"reboot", "Reboot the system", reboot},
-//     {"halt", "Halt the system.", halt},
-//     {"sudo halt", "Halt the system. (Stops it).", hhalt},
-//     {"colour", "Set shell colour", colour},
-//     {"reg", "Dumps Registers", dump_registers},
-//     {"panic", "Kernel Panic", kernel_panic},
-//     {"shutdown", "Shutdown the system", shutdown},
-//     {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
-//     {"uptime", "Get the system uptime in seconds.", kuptime},
-// };
+static command_t in_commands[] = {
+    {"help", "Display this help message", help},
+    {"?", NULL, help},
+    {"h", NULL, help},
+    {"exit", "Exit the shell", NULL},
+    {"clear", "Clear the screen", clear_screen},
+    {"kdump", "Dump memory", ks_kdump},
+    {"stack", "Dump stack", kdump_stack},
+    {"reboot", "Reboot the system", reboot},
+    {"halt", "Halt the system.", halt},
+    {"sudo halt", "Halt the system. (Stops it).", hhalt},
+    {"colour", "Set shell colour", colour},
+    {"reg", "Dumps Registers", dump_registers},
+    {"panic", "Kernel Panic", kernel_panic},
+    {"shutdown", "Shutdown the system", shutdown},
+    {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
+    {"uptime", "Get the system uptime in seconds.", kuptime},
+    {NULL, NULL, NULL}
+};
 
 void install_command(const char* cmd, const char* desc, void (*func)())
 {
-    for (int i = 0; i < sizeof(commands) / sizeof(command_t); i++)
+    for (int i = 0; i < MAX_COMMANDS; i++)
     {
         if (commands[i].cmd == NULL)
         {
@@ -56,25 +53,20 @@ void install_command(const char* cmd, const char* desc, void (*func)())
     }
 }
 
+void install_all_cmds(command_t* cmds)
+{
+    for (int i = 0; i < MAX_COMMANDS; i++)
+    {
+        if (cmds[i].cmd == NULL)
+            break;
+        install_command(cmds[i].cmd, cmds[i].desc, cmds[i].func);
+    }
+}
+
 void init_kshell()
 {
     memset(commands, 0, sizeof(commands));
-    install_command("help", "Display this help message", help);
-    install_command("?", NULL, help);
-    install_command("h", NULL, help);
-    install_command("exit", "Exit the shell", NULL);
-    install_command("clear", "Clear the screen", clear_screen);
-    install_command("kdump", "Dump memory", ks_kdump);
-    install_command("stack", "Dump stack", kdump_stack);
-    install_command("reboot", "Reboot the system", reboot);
-    install_command("halt", "Halt the system.", halt);
-    install_command("sudo halt", "Halt the system. (Stops it).", hhalt);
-    install_command("colour", "Set shell colour", colour);
-    install_command("reg", "Dumps Registers", dump_registers);
-    install_command("panic", "Kernel Panic", kernel_panic);
-    install_command("shutdown", "Shutdown the system", shutdown);
-    install_command("sleep", "Sleeps the kernel for 'n' seconds", ksleep);
-    install_command("uptime", "Get the system uptime in seconds.", kuptime);
+    install_all_cmds(in_commands);
 }
 
 static void kuptime()
