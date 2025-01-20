@@ -4,7 +4,6 @@
 #include "kshell/kshell.h"
 #include "timers/timers.h"
 #include "memory/memory.h"
-#include "memory/mem_utils.h"
 
 extern uint32_t endkernel;
 
