@@ -300,7 +300,6 @@ void* kmalloc(size_t size)
         return NULL;
     }
 
-    printf("Allocated %z bytes at %p|%d|\n", size, (char*)heap_end + sizeof(block_header_t), prev && prev != free_list);
     block_header_t* new_block = (block_header_t*)old_end;
 
     /* Initialize the newly created block */
