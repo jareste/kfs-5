@@ -790,10 +790,11 @@ void debug_page_mapping(uint32_t address)
 
 static void test_vmalloc()
 {
+    size_t size;
     for (int i = 0; i < 500; i++)
     {
-        size_t size = MB(1);
-        void* vm = vmalloc(size, true);
+        size = MB(1);
+        void* vm = vmalloc(size, i%2?true:false);
         if (!vm)
         {
             set_putchar_colour(RED);
@@ -801,13 +802,31 @@ static void test_vmalloc()
             set_putchar_colour(LIGHT_GREY);
             return;
         }
-        printf("Allocated vm: %p\n", vm);
-        printf("Size of vm: %z\n", vsize(vm));
+        void* vm2 = vmalloc(size, i%2?true:false);
+        if (!vm2)
+        {
+            set_putchar_colour(RED);
+            printf("vmalloc: failed to allocate %z bytes\n", size);
+            set_putchar_colour(LIGHT_GREY);
+            return;
+        }
         memset(vm, 'A', size);
+        memset(vm2, 'A', size);
+        if (memcmp(vm, vm2, size) != 0)
+        {
+            set_putchar_colour(RED);
+            printf("vmalloc: memory corruption detected!\n");
+            set_putchar_colour(LIGHT_GREY);
+            kernel_panic("vmalloc: memory corruption detected!\n");
+        }
+        if (i%10 == 0)
+            puts_color(" 10 x Memory test passed\n", GREEN);
+        
         vfree(vm);
+        vfree(vm2);
     }
 
-    size_t size = MB(60);
+    size = MB(60);
     printf("Allocating %z bytes with vmalloc\n", size);
     void* vm1 = vmalloc(size, true);
     if (!vm1)

@@ -40,5 +40,7 @@ uint32_t get_stack_pointer();
 void dump_registers_c(registers_t* regs);
 void kernel_panic();
 extern void dump_registers();
+void *memcpy(void *dest, const void *src, size_t n);
+int memcmp(const void* s1, const void* s2, size_t n);
 
 #endif
