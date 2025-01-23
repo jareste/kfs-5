@@ -152,56 +152,47 @@ void paging_init()
 void heap_init()
 {
     heap_end = (void*)ALIGN_4K((uintptr_t)HEAP_START);
-    // free_list = (block_header_t*)heap_end;
-    // free_list->size = HEAP_SIZE_ - sizeof(block_header_t);
-    // free_list->next = NULL;
-    // free_list->free = 1;
-
-
-    printf("Kernel ends at: %p\n", &endkernel);
-    printf("Heap starts at: %p\n", HEAP_START);
-    printf("Heap size: %z bytes\n", HEAP_SIZE_);
-
     install_all_cmds(commands);
 }
 
-static void map_page(uintptr_t virt_addr, uint32_t phys_addr, uint32_t flags)
-{
-    uint32_t pd_index = virt_addr >> 22;
-    uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
+/* Not using them now but might become usefull in future. */
+// static void map_page(uintptr_t virt_addr, uint32_t phys_addr, uint32_t flags)
+// {
+//     uint32_t pd_index = virt_addr >> 22;
+//     uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
 
-    if (!(page_directory[pd_index] & PAGE_PRESENT))
-    {
-        uint32_t pt_frame = allocate_frame();
-        if (!pt_frame)
-            kernel_panic("Out of frames for PDE!\n");
+//     if (!(page_directory[pd_index] & PAGE_PRESENT))
+//     {
+//         uint32_t pt_frame = allocate_frame();
+//         if (!pt_frame)
+//             kernel_panic("Out of frames for PDE!\n");
 
-        /* PDE flags: take the top 20 bits for address plus flags 
-         * Typically: PDE gets the same "user" bit if we want user access
-         * If PDE is for kernel, do not set PAGE_USER
-         */
-        memset((void*)pt_frame, 0, PAGE_SIZE); // zero the frame
-        uint32_t pde_flags = (pt_frame & ~0xFFF) | (flags & PAGE_USER) | PAGE_PRESENT | PAGE_RW;
-        page_directory[pd_index] = pde_flags;
-    }
+//         /* PDE flags: take the top 20 bits for address plus flags 
+//          * Typically: PDE gets the same "user" bit if we want user access
+//          * If PDE is for kernel, do not set PAGE_USER
+//          */
+//         memset((void*)pt_frame, 0, PAGE_SIZE); // zero the frame
+//         uint32_t pde_flags = (pt_frame & ~0xFFF) | (flags & PAGE_USER) | PAGE_PRESENT | PAGE_RW;
+//         page_directory[pd_index] = pde_flags;
+//     }
 
-    page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
+//     page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
 
-    (*pt)[pt_index] = (phys_addr & ~0xFFF) | (flags & 0xFFF);
+//     (*pt)[pt_index] = (phys_addr & ~0xFFF) | (flags & 0xFFF);
 
-    /* Flush TLB for this address */
-    asm volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
-}
+//     /* Flush TLB for this address */
+//     asm volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
+// }
 
-static void map_page_kernel(uintptr_t virt, uint32_t phys)
-{
-    map_page(virt, phys, PAGE_PRESENT | PAGE_RW);
-}
+// static void map_page_kernel(uintptr_t virt, uint32_t phys)
+// {
+//     map_page(virt, phys, PAGE_PRESENT | PAGE_RW);
+// }
 
-static void map_page_user(uintptr_t virt, uint32_t phys)
-{
-    map_page(virt, phys, PAGE_PRESENT | PAGE_RW | PAGE_USER);
-}
+// static void map_page_user(uintptr_t virt, uint32_t phys)
+// {
+//     map_page(virt, phys, PAGE_PRESENT | PAGE_RW | PAGE_USER);
+// }
 
 /*############################################################################*/
 /*                                                                            */
@@ -370,39 +361,6 @@ size_t ksize(void* ptr)
 /*                           VMALLOC                                          */
 /*                                                                            */
 /*############################################################################*/
-
-static inline uint32_t make_pde_flags()
-{
-    return PAGE_PRESENT | PAGE_RW; // TODO: we can set PAGE_USER here
-}
-static inline uint32_t make_pte_flags()
-{
-    return PAGE_PRESENT | PAGE_RW;
-}
-
-/**
- * create_page_table_if_needed:
- *   If PDE at pd_index not present, allocate a frame for that page table,
- *   zero it, set PDE.  Then return pointer to the page table.
- */
-static page_table_t* create_page_table_if_needed(uint32_t pd_index)
-{
-    if (!(page_directory[pd_index] & PAGE_PRESENT))
-    {
-        uint32_t pt_phys = allocate_frame();
-        if (!pt_phys)
-        {
-            puts_color("vmalloc: out of frames for new page table!\n", RED);
-            return NULL; 
-        }
-
-        memset((void*)pt_phys, 0, PAGE_SIZE);
-        page_directory[pd_index] = pt_phys | make_pde_flags();
-    }
-    uint32_t pt_base = page_directory[pd_index] & ~0xFFF;
-    return (page_table_t*)pt_base;
-}
-
 static void map_new_page(uintptr_t vaddr, bool is_user)
 {
     uint32_t pde_flags = (PAGE_PRESENT | PAGE_RW);
