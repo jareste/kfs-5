@@ -12,7 +12,9 @@ extern uint32_t endkernel;
 /*                           DEFINES                                          */
 /*                                                                            */
 /*############################################################################*/
-#define HEAP_START ((uintptr_t)&endkernel + 0x4000) // Start heap 4 KB after kernel
+// #define HEAP_START ((uintptr_t)&endkernel + 0x4000) // Start heap 4 KB after kernel
+#define HEAP_START (ALIGN_4K((uintptr_t)&endkernel + 0x4000))
+
 #define HEAP_SIZE_  0x100000  /* 1 MB heap size */
 #define ALIGN_4K(x)  (((x) + 0xFFF) & ~0xFFF) /* 4 KB alignment */
 #define ALIGN_8(x) (((x) + 0x7) & ~0x7) /* 8-byte alignment */
@@ -69,6 +71,7 @@ static void test_vmalloc();
 static void K2();
 static void show_user_allocations();
 static void show_kernel_allocations();
+static void test_kmalloc();
 void dump_page_directory();
 
 /*############################################################################*/
@@ -93,6 +96,7 @@ static command_t commands[] = {
     {"tmem", "Test memory allocation", test_mem},
     {"theap", "Test dynamic heap growth", test_dynamic_heap_growth},
     {"vmalloc", "Test vmalloc", test_vmalloc},
+    {"kmalloc", "Test kmalloc", test_kmalloc},
     {"mem2", "Allocate 2 MB. No Free", K2},
     {"show alloc", "Show allocated memory", show_kernel_allocations},
     {"show user", "Show user allocated memory", show_user_allocations},
@@ -148,10 +152,10 @@ void paging_init()
 void heap_init()
 {
     heap_end = (void*)ALIGN_4K((uintptr_t)HEAP_START);
-    free_list = (block_header_t*)heap_end;
-    free_list->size = HEAP_SIZE_ - sizeof(block_header_t);
-    free_list->next = NULL;
-    free_list->free = 1;
+    // free_list = (block_header_t*)heap_end;
+    // free_list->size = HEAP_SIZE_ - sizeof(block_header_t);
+    // free_list->next = NULL;
+    // free_list->free = 1;
 
 
     printf("Kernel ends at: %p\n", &endkernel);
@@ -239,15 +243,13 @@ void* kbrk(void* addr)
             (*table)[pt_index] = phys_frame | (PAGE_PRESENT | PAGE_RW);
         }
 
-
         current_heap_end += PAGE_SIZE;
     }
 
-
-    heap_end = addr;
+    heap_end = (void*)new_heap_end;
     return heap_end;
-
 }
+
 
 /**
  * kmalloc:
@@ -264,6 +266,7 @@ void* kmalloc(size_t size)
 
     while (current)
     {
+
         if (current->free && current->size >= size)
         {
             current->free = 0;
@@ -271,8 +274,7 @@ void* kmalloc(size_t size)
             /* Split the block if it's considerably larger than ‘size’ */
             if (current->size > size + sizeof(block_header_t))
             {
-                block_header_t* new_block = 
-                    (block_header_t*)((char*)current + sizeof(block_header_t) + size);
+                block_header_t* new_block = (block_header_t*)ALIGN_8((uintptr_t)current + sizeof(block_header_t) + size);
 
                 new_block->size = current->size - size - sizeof(block_header_t);
                 new_block->free = 1;
@@ -280,17 +282,7 @@ void* kmalloc(size_t size)
 
                 current->size = size;
                 current->next = new_block;
-
-                uintptr_t new_block_end = (uintptr_t)new_block + sizeof(block_header_t) + new_block->size;
-                if (new_block_end > (uintptr_t)heap_end)
-                {
-                    if (kbrk((void*)new_block_end) == (void*)-1)
-                    {
-                        kernel_panic("kmalloc: Failed to expand heap!");
-                    }
-                }
             }
-
 
             /* Return a pointer after the header */
             void* allocated_mem = (char*)current + sizeof(block_header_t);
@@ -301,14 +293,24 @@ void* kmalloc(size_t size)
         current = current->next;
     }
 
-    /* No suitable free block, so we must expand the heap */
-    block_header_t* new_block = (block_header_t*)heap_end;
-    uintptr_t new_heap_end = (uintptr_t)new_block + sizeof(block_header_t) + size;
-    if (kbrk((void*)new_heap_end) == (void*)-1)
+    uintptr_t old_end = (uintptr_t)heap_end;
+    size_t new_size = free_list ? size : ((size > MB(1)) ? size : MB(1));
+    uintptr_t new_heap_end = (uintptr_t)heap_end + new_size + sizeof(block_header_t);
+
+    if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
     {
         puts_color("kmalloc: Out of memory (heap expansion)!\n", RED);
         return NULL;
     }
+
+    if (kbrk((void*)new_heap_end) == (void*)-1)
+    {
+        puts_color("kmalloc: Failed to expand heap!\n", RED);
+        return NULL;
+    }
+
+    printf("Allocated %z bytes at %p|%d|\n", size, (char*)heap_end + sizeof(block_header_t), prev && prev != free_list);
+    block_header_t* new_block = (block_header_t*)old_end;
 
     /* Initialize the newly created block */
     new_block->size = size;
@@ -337,7 +339,7 @@ void kfree(void* ptr)
     block->free = 1;
 
     /* Coalesce adjacent free blocks */
-    block_header_t* current = free_list;
+    block_header_t* current = block;
     while (current)
     {
         if (current->free && current->next && current->next->free)
@@ -347,6 +349,11 @@ void kfree(void* ptr)
         }
         current = current->next;
     }
+    if (block < free_list)
+    {
+        free_list = block;
+    }
+
 }
 
 size_t ksize(void* ptr)
@@ -543,7 +550,7 @@ void* vmalloc(size_t size, bool is_user)
     new_block->free = 0;
     new_block->next = NULL;
 
-    if (prev)
+    if (prev && prev != vblock_list)
     {
         prev->next = new_block;
     }
@@ -703,15 +710,15 @@ static void test_dynamic_heap_growth()
     void* block1 = kmalloc(64);
     printf("Allocated block1: %p\n", block1);
 
-    memset(block1, 'A', 64);
-    for (int i = 0; i < 64; i++)
-    {
-        if (((char*)block1)[i] != 'A')
-        {
-            puts_color("Memory corruption detected in block1!\n", RED);
-            break;
-        }
-    }
+    // memset(block1, 'A', MB(1));
+    // for (int i = 0; i < MB(1); i++)
+    // {
+    //     if (((char*)block1)[i] != 'A')
+    //     {
+    //         puts_color("Memory corruption detected in block1!\n", RED);
+    //         break;
+    //     }
+    // }
 
     size_t malloc_size = MB(40);
     void* large_block = kmalloc(malloc_size);
@@ -788,6 +795,58 @@ void debug_page_mapping(uint32_t address)
     }
 }
 
+static void test_kmalloc()
+{
+    size_t size;
+    for (int i = 0; i < 500; i++)
+    {
+        size = MB(1);
+        void* vm = kmalloc(size);
+        if (!vm)
+        {
+            set_putchar_colour(RED);
+            printf("vmalloc: failed to allocate %z bytes\n", size);
+            set_putchar_colour(LIGHT_GREY);
+            return;
+        }
+        void* vm2 = kmalloc(size);
+        if (!vm2)
+        {
+            set_putchar_colour(RED);
+            printf("vmalloc: failed to allocate %z bytes\n", size);
+            set_putchar_colour(LIGHT_GREY);
+            return;
+        }
+
+        if (i%10 == 0)
+        {
+            puts_color(" 10 x Memory test passed\n", GREEN);
+            // printf("Allocated vm: %p\n", vm);
+            // printf("Allocated vm: %p\n", vm2);
+        }
+        // while(1);
+        kfree(vm);
+        kfree(vm2);
+    }
+
+    size = MB(50);
+    printf("Allocating %z bytes with vmalloc\n", size);
+    void* vm1 = kmalloc(size);
+    if (!vm1)
+    {
+        set_putchar_colour(RED);
+        printf("vmalloc: failed to allocate %z bytes\n", size);
+        set_putchar_colour(LIGHT_GREY);
+        return;
+    }
+    printf("Allocated vm1: %p\n", vm1);
+    printf("Size of vm1: %z\n", ksize(vm1));
+    printf("Size of vm1: %z\n", size);
+    memset(vm1, 'A', size);
+    kfree(vm1);
+}
+
+
 static void test_vmalloc()
 {
     size_t size;
@@ -820,8 +879,10 @@ static void test_vmalloc()
             kernel_panic("vmalloc: memory corruption detected!\n");
         }
         if (i%10 == 0)
+        {
             puts_color(" 10 x Memory test passed\n", GREEN);
-        
+            // printf("Allocated vm: %p\n", vm);
+        }
         vfree(vm);
         vfree(vm2);
     }

@@ -70,7 +70,7 @@ fclean: clean
 
 re: fclean all
 
-run:
+run: all
 	qemu-system-i386 -kernel $(BIN_NAME) -m 4096
 
 run_grub:
