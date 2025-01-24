@@ -91,7 +91,7 @@ void init_section(const char* name, section_t section)
     command_sections[section].name = name;
     command_sections[section].section = section;
     memset(command_sections[section].commands, 0,\
-     sizeof(command_sections[section].commands));
+    sizeof(command_sections[section].commands));
 }
 
 void init_kshell()
@@ -103,7 +103,7 @@ void init_kshell()
     init_section("system", SYSTEM);
     init_section("debug", DEBUG);
 
-    current_section = GENERAL;
+    current_section = GLOBAL;
 
     install_all_cmds(global_commands, GLOBAL);
     install_all_cmds(in_commands, GENERAL);
