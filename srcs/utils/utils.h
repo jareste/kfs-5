@@ -40,9 +40,11 @@ uint32_t strtol(const char* str, char** endptr, int base);
 uint32_t hex_string_to_int(const char *hex_str);
 uint32_t get_stack_pointer();
 void dump_registers_c(registers_t* regs);
-void kernel_panic();
+void kernel_panic(char* msg);
 extern void dump_registers();
 void *memcpy(void *dest, const void *src, size_t n);
 int memcmp(const void* s1, const void* s2, size_t n);
+
+#define ASSERT(x) if (!(x)) { kernel_panic("Assertion failed: " #x); }
 
 #endif
