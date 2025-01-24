@@ -20,7 +20,6 @@ void kernel_main()
 
     puts_color(BANNER, LIGHT_GREEN);
 
-
     enable_interrupts();
     
     puts("Welcome to the kernel\n");

@@ -301,16 +301,16 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(stack)
     UNUSED(err_code)
     UNUSED(intr_no)
-    printf("Interrupt S number: %d\n", intr_no);
+    disable_interrupts();
+    printf("Interrupt SW number: %d\n", intr_no);
     if (intr_no == 14) /* Page fault */
         page_fault_handler(&reg, &stack);
     else if (intr_no == 13) /* General protection fault */
         page_fault_handler(&reg, &stack);
+    else /* unkown, better pause it */
+        kernel_panic("Unknown interrupt");
 	outb(PIC_EOI, PIC1_COMMAND);
-	// while (1)
-	// {
-		
-	// }
+	enable_interrupts();
 }
 
 void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
@@ -328,18 +328,12 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     else if (intr_no == 0)
     {
         irq_handler_timer();
-        // timer_handler();
     }
     else
     {
-        printf("Interrupt Q number: %d\n", intr_no);
-        while (1);
+        printf("Interrupt HW number: %d\n", intr_no);
+        kernel_panic("Unknown interrupt");
     }
-	// while (1)
-	// {
-		
-	// }
-	
 	enable_interrupts();
 }
 

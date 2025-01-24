@@ -300,6 +300,22 @@ static bool check_global_cmd(char* cmd)
     return false;
 }
 
+void trigger_interrupt_software_0()
+{
+    asm volatile (
+        "mov $3, %eax\n"
+        "xor %edx, %edx\n"
+        "div %edx\n"
+    );
+}
+
+void trigger_interrupt_software_6()
+{    
+    int j = 3;
+    int i = 0;
+    printf("Kernel end: %d\n", j / i);
+}
+
 void kshell()
 {
     int i = 0;
