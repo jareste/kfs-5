@@ -1,30 +1,26 @@
 #include "utils.h"
-bool strcmp(const char *str1, const char *str2)
+
+int strcmp(const char *str1, const char *str2)
 {
-    int i = 0;
-    while (str1[i] && str2[i])
+    while (*str1 && (*str1 == *str2))
     {
-        if (str1[i] != str2[i])
-            return false;
-        i++;
+        str1++;
+        str2++;
     }
-    if (str1[i] || str2[i])
-        return false;
-    return true;
+    return *(unsigned char *)str1 - *(unsigned char *)str2;
 }
 
-bool strncmp(const char *str1, const char *str2, int n)
+int strncmp(const char *str1, const char *str2, int n)
 {
-    int i = 0;
-    while (str1[i] && str2[i] && i < n)
+    while (n && *str1 && (*str1 == *str2))
     {
-        if (str1[i] != str2[i])
-            return false;
-        i++;
+        str1++;
+        str2++;
+        n--;
     }
-    if (i == n)
-        return true;
-    if (str1[i] || str2[i])
-        return false;
-    return true;
+    if (n == 0)
+    {
+        return 0;
+    }
+    return *(unsigned char *)str1 - *(unsigned char *)str2;
 }

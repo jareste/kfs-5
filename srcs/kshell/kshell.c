@@ -4,6 +4,18 @@
 #include "../timers/timers.h"
 #include "kshell.h"
 
+#define MAX_COMMANDS 256
+#define MAX_SECTIONS_COMMANDS 25
+#define MAX_SECTIONS SECTION_T_MAX
+
+typedef struct {
+    const char* name;
+    section_t section;
+    command_t commands[MAX_SECTIONS_COMMANDS];
+} command_section_t;
+
+section_t current_section = GENERAL;
+
 static void help();
 static void ks_kdump();
 static void reboot();
@@ -14,59 +26,90 @@ static void colour();
 static void shutdown();
 static void ksleep();
 static void kuptime();
+static void cmd_section();
+static void help_global();
 
-#define MAX_COMMANDS 256
+static command_section_t command_sections[MAX_SECTIONS];
 
-static command_t commands[MAX_COMMANDS]; /* Maximum CLI cmds */
-
-static command_t in_commands[] = {
+static command_t global_commands[] = {
     {"help", "Display this help message", help},
     {"?", NULL, help},
-    {"h", NULL, help},
-    {"exit", "Exit the shell", NULL},
-    {"clear", "Clear the screen", clear_screen},
-    {"kdump", "Dump memory", ks_kdump},
-    {"stack", "Dump stack", kdump_stack},
+    {"h", NULL, help_global},
     {"reboot", "Reboot the system", reboot},
-    {"halt", "Halt the system.", halt},
-    {"sudo halt", "Halt the system. (Stops it).", hhalt},
-    {"colour", "Set shell colour", colour},
-    {"reg", "Dumps Registers", dump_registers},
-    {"panic", "Kernel Panic", kernel_panic},
+    {"clear", "Clear the screen", clear_screen},
     {"shutdown", "Shutdown the system", shutdown},
-    {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
+    {"sec", "Change the command section", cmd_section},
+    {NULL, NULL, NULL}    
+};
+
+static command_t in_commands[] = {
+    {"exit", "Exit the shell", NULL},
+    {"color", "Set shell color", colour},
     {"uptime", "Get the system uptime in seconds.", kuptime},
     {NULL, NULL, NULL}
 };
 
-void install_command(const char* cmd, const char* desc, void (*func)())
+static command_t dcommand[] = {
+    {"kdump", "Dump memory", ks_kdump},
+    {"stack", "Dump stack", kdump_stack},
+    {"halt", "Halt the system.", halt},
+    {"sudo halt", "Halt the system. (Stops it).", hhalt},
+    {"reg", "Dumps Registers", dump_registers},
+    {"panic", "Kernel Panic", kernel_panic},
+    {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
+    {NULL, NULL, NULL}
+};
+
+void install_command(command_t* cmds, const char* cmd, const char* desc, void (*func)())
 {
-    for (int i = 0; i < MAX_COMMANDS; i++)
+    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
     {
-        if (commands[i].cmd == NULL)
+        if (cmds[i].cmd == NULL)
         {
-            commands[i].cmd = cmd;
-            commands[i].desc = desc;
-            commands[i].func = func;
-            break;
+            cmds[i].cmd = cmd;
+            cmds[i].desc = desc;
+            cmds[i].func = func;
+            return;
         }
     }
 }
 
-void install_all_cmds(command_t* cmds)
+void install_all_cmds(command_t* cmds, section_t section)
 {
-    for (int i = 0; i < MAX_COMMANDS; i++)
+    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
     {
         if (cmds[i].cmd == NULL)
             break;
-        install_command(cmds[i].cmd, cmds[i].desc, cmds[i].func);
+        
+        install_command(command_sections[section].commands,\
+         cmds[i].cmd, cmds[i].desc, cmds[i].func);
     }
+}
+
+void init_section(const char* name, section_t section)
+{
+    command_sections[section].name = name;
+    command_sections[section].section = section;
+    memset(command_sections[section].commands, 0,\
+     sizeof(command_sections[section].commands));
 }
 
 void init_kshell()
 {
-    memset(commands, 0, sizeof(commands));
-    install_all_cmds(in_commands);
+    init_section("global", GLOBAL);
+    init_section("general", GENERAL);
+    init_section("memory", MEMORY);
+    init_section("misc", MISC);
+    init_section("system", SYSTEM);
+    init_section("debug", DEBUG);
+
+    current_section = GENERAL;
+
+    printf("sizeof(command_sections): %d\n", sizeof(section_t));
+
+    install_all_cmds(global_commands, GLOBAL);
+    install_all_cmds(in_commands, GENERAL);
+    install_all_cmds(dcommand, DEBUG);
 }
 
 static void kuptime()
@@ -138,13 +181,32 @@ static void help()
 {
     printf("Available commands:\n");
     
-    for (int i = 0; i < sizeof(commands) / sizeof(command_t); i++)
+    command_t* commands = command_sections[current_section].commands;
+
+    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
     {
         if (commands[i].desc == NULL)
             continue;
 
         printf("  %s: %s\n", commands[i].cmd, commands[i].desc);
     }
+
+}
+
+static void help_global()
+{
+    printf("Available commands:\n");
+    
+    command_t* commands = command_sections[GLOBAL].commands;
+
+    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
+    {
+        if (commands[i].desc == NULL)
+            continue;
+
+        printf("  %s: %s\n", commands[i].cmd, commands[i].desc);
+    }
+
 }
 
 static void kdump_stack()
@@ -201,9 +263,49 @@ static void shutdown()
     outw(0x604, 0x2000);
 }
 
+static void cmd_section()
+{
+    printf("Available sections:\n");
+    for (int i = 0; i < MAX_SECTIONS; i++)
+    {
+        printf("  %d: %s\n", i, command_sections[i].name);
+    }
+    printf("Enter the section: ");
+    clear_kb_buffer();
+    while (getc() != 10);
+    char* buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    uint32_t section = (uint32_t)hex_string_to_int(buffer);
+    printf("Section: %x\n", section);
+    current_section = section;
+    clear_kb_buffer();
+}
+
+static bool check_global_cmd(char* cmd)
+{
+    command_t* commands = command_sections[GLOBAL].commands;
+    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
+    {
+        if (commands[i].cmd && (strcmp(cmd, commands[i].cmd) == 0))
+        {
+            if (commands[i].func)
+            {
+                commands[i].func();
+            }
+            else
+            {
+                printf("Not implemented yet\n");
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 void kshell()
 {
     int i = 0;
+    command_t* commands;
 
     printf("jareste-OS> ");
     while (1)
@@ -213,9 +315,18 @@ void kshell()
         {
             char* buffer = get_kb_buffer();
             buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-            for (i = 0; i < sizeof(commands) / sizeof(command_t); i++)
+
+            if (check_global_cmd(buffer))
             {
-                if (strcmp(buffer, commands[i].cmd) == true)
+                clear_kb_buffer();
+                printf("jareste-OS> ");
+                continue;
+            }
+
+            commands = command_sections[current_section].commands;
+            for (i = 0; i < MAX_SECTIONS_COMMANDS; i++)
+            {
+                if (commands[i].cmd && (strcmp(buffer, commands[i].cmd) == 0))
                 {
                     if (commands[i].func)
                     {
@@ -228,9 +339,10 @@ void kshell()
                     break;
                 }
             }
-            if (i == sizeof(commands) / sizeof(command_t))
+            if (i == MAX_SECTIONS_COMMANDS)
             {
-                printf("Command '%s' not found. Type 'help' for a list of available commands\n", buffer);
+                printf("Command '%s' not found. Type 'help' for a list of available commands\n",\
+                 buffer, command_sections[current_section].name, current_section);
             }
 
             clear_kb_buffer();

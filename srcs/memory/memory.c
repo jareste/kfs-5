@@ -20,7 +20,7 @@ extern uint32_t endkernel;
 #define ALIGN_8(x) (((x) + 0x7) & ~0x7) /* 8-byte alignment */
 #define MB(x) (x * 1024 * 1024) /* Convert MB to bytes */
 #define KB(x) (x * 1024) /* Convert KB to bytes */
-#define MAX_HEAP_SIZE (100 * 1024 * 1024) /* Allow up to 100MB */
+#define MAX_HEAP_SIZE (20 * 1024 * 1024) /* Allow up to 64MB */
 
 #define PAGE_PRESENT  0x1
 #define PAGE_RW       0x2
@@ -32,7 +32,7 @@ extern uint32_t endkernel;
  * kernel heap or PDE[0] identity region.
  */
 #define VMALLOC_START 0xC1000000
-#define VMALLOC_END   0xC5000000  // 64 MB
+#define VMALLOC_END   0xC3000000  // 64 MB
 
 #define KERNEL_PDE_FLAGS  (PAGE_PRESENT | PAGE_RW)
 #define KERNEL_PTE_FLAGS  (PAGE_PRESENT | PAGE_RW)
@@ -152,7 +152,7 @@ void paging_init()
 void heap_init()
 {
     heap_end = (void*)ALIGN_4K((uintptr_t)HEAP_START);
-    install_all_cmds(commands);
+    install_all_cmds(commands, MEMORY);
 }
 
 /* Not using them now but might become usefull in future. */
@@ -200,10 +200,8 @@ void heap_init()
 /*                                                                            */
 /*############################################################################*/
 
-void* kbrk(void* addr)
-{
-    if ((uintptr_t)addr > HEAP_START + MAX_HEAP_SIZE)
-    {
+void* kbrk(void* addr) {
+    if ((uintptr_t)addr > HEAP_START + MAX_HEAP_SIZE) {
         puts_color("WARNING: Heap exceeds maximum limit!\n", RED);
         return (void*)-1;
     }
@@ -211,13 +209,11 @@ void* kbrk(void* addr)
     uint32_t new_heap_end = ALIGN_4K((uintptr_t)addr);
     uint32_t current_heap_end = ALIGN_4K((uintptr_t)heap_end);
 
-    while (current_heap_end < new_heap_end)
-    {
+    while (current_heap_end < new_heap_end) {
         uint32_t pd_index = current_heap_end >> 22;
         uint32_t pt_index = (current_heap_end >> 12) & 0x3FF;
 
-        if (!(page_directory[pd_index] & PAGE_PRESENT))
-        {
+        if (!(page_directory[pd_index] & PAGE_PRESENT)) {
             uint32_t pt_phys = allocate_frame();
             if (!pt_phys) kernel_panic("kbrk: Failed to allocate page table frame!");
 
@@ -226,8 +222,7 @@ void* kbrk(void* addr)
         }
 
         page_table_t* table = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-        if (!((*table)[pt_index] & PAGE_PRESENT))
-        {
+        if (!((*table)[pt_index] & PAGE_PRESENT)) {
             uint32_t phys_frame = allocate_frame();
             if (!phys_frame) kernel_panic("kbrk: Failed to allocate frame!");
 
@@ -240,7 +235,6 @@ void* kbrk(void* addr)
     heap_end = (void*)new_heap_end;
     return heap_end;
 }
-
 
 /**
  * kmalloc:
@@ -257,16 +251,13 @@ void* kmalloc(size_t size)
 
     while (current)
     {
-
         if (current->free && current->size >= size)
         {
             current->free = 0;
-
-            /* Split the block if it's considerably larger than ‘size’ */
+        
             if (current->size > size + sizeof(block_header_t))
             {
                 block_header_t* new_block = (block_header_t*)ALIGN_8((uintptr_t)current + sizeof(block_header_t) + size);
-
                 new_block->size = current->size - size - sizeof(block_header_t);
                 new_block->free = 1;
                 new_block->next = current->next;
@@ -275,7 +266,6 @@ void* kmalloc(size_t size)
                 current->next = new_block;
             }
 
-            /* Return a pointer after the header */
             void* allocated_mem = (char*)current + sizeof(block_header_t);
             return allocated_mem;
         }
@@ -285,8 +275,8 @@ void* kmalloc(size_t size)
     }
 
     uintptr_t old_end = (uintptr_t)heap_end;
-    size_t new_size = free_list ? size : ((size > MB(1)) ? size : MB(1));
-    uintptr_t new_heap_end = (uintptr_t)heap_end + new_size + sizeof(block_header_t);
+    size_t new_size = size + sizeof(block_header_t);
+    uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
 
     if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
     {
@@ -301,8 +291,6 @@ void* kmalloc(size_t size)
     }
 
     block_header_t* new_block = (block_header_t*)old_end;
-
-    /* Initialize the newly created block */
     new_block->size = size;
     new_block->free = 0;
     new_block->next = NULL;
@@ -313,7 +301,6 @@ void* kmalloc(size_t size)
     }
     else
     {
-        /* first block in the list */
         free_list = new_block;
     }
 
@@ -328,8 +315,7 @@ void kfree(void* ptr)
     block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
     block->free = 1;
 
-    /* Coalesce adjacent free blocks */
-    block_header_t* current = block;
+    block_header_t* current = free_list;
     while (current)
     {
         if (current->free && current->next && current->next->free)
@@ -339,12 +325,36 @@ void kfree(void* ptr)
         }
         current = current->next;
     }
+
     if (block < free_list)
     {
         free_list = block;
     }
-
 }
+// void kfree(void* ptr)
+// {
+//     if (!ptr) return;
+
+//     block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
+//     block->free = 1;
+
+//     /* Coalesce adjacent free blocks */
+//     block_header_t* current = block;
+//     while (current)
+//     {
+//         if (current->free && current->next && current->next->free)
+//         {
+//             current->size += sizeof(block_header_t) + current->next->size;
+//             current->next = current->next->next;
+//         }
+//         current = current->next;
+//     }
+//     if (block < free_list)
+//     {
+//         free_list = block;
+//     }
+
+// }
 
 size_t ksize(void* ptr)
 {
@@ -422,31 +432,19 @@ static void unmap_page(uintptr_t vaddr)
     /* TODO: Free the page if it's not used at all. */
 }
 
-void* vbrk(void* addr, bool is_user)
-{
+void* vbrk(void* addr, bool is_user) {
     uintptr_t new_end = (uintptr_t)addr;
-    if (new_end < VMALLOC_START || new_end > VMALLOC_END)
-    {
+    if (new_end < VMALLOC_START || new_end > VMALLOC_END) {
         puts_color("vbrk: out of vmalloc region!\n", RED);
         return (void*)-1;
     }
-    
-    if (new_end > vheap_end)
-    {
-        /* ask for more vmem */
-        int i = 0;
-        for (uintptr_t p = vheap_end; p < new_end; p += PAGE_SIZE)
-        {
-            // printf("vbrk: mapping new page %d\n", i++);
-            // puts("vbrk: mapping new page\n");
+
+    if (new_end > vheap_end) {
+        for (uintptr_t p = vheap_end; p < new_end; p += PAGE_SIZE) {
             map_new_page(p, is_user);
         }
-    }
-    else if (new_end < vheap_end)
-    {
-        /* We got less vmem, so lets make it shorter. */
-        for (uintptr_t p = new_end; p < vheap_end; p += PAGE_SIZE)
-        {
+    } else if (new_end < vheap_end) {
+        for (uintptr_t p = new_end; p < vheap_end; p += PAGE_SIZE) {
             unmap_page(p);
         }
     }
@@ -507,7 +505,7 @@ void* vmalloc(size_t size, bool is_user)
     new_block->free = 0;
     new_block->next = NULL;
 
-    if (prev && prev != vblock_list)
+    if (prev)
     {
         prev->next = new_block;
     }
@@ -600,7 +598,7 @@ void dump_page_directory()
             uint32_t pde_flags = page_directory[i] & 0xFFF;     // low 12 bits
             uint32_t pde_base  = page_directory[i] & 0xFFFFF000; // top 20 bits
 
-            printf("PDE[%d]: base=0x%x, flags=", i, pde_base);
+            printf("PDE[%d]: base=%x, flags=", i, pde_base);
             print_pde_flags(pde_flags);
             putc('\n');
 
@@ -677,6 +675,8 @@ static void test_dynamic_heap_growth()
     //     }
     // }
 
+    kfree(block1);
+
     size_t malloc_size = MB(40);
     void* large_block = kmalloc(malloc_size);
     if (large_block)
@@ -697,6 +697,7 @@ static void test_dynamic_heap_growth()
     {
         puts_color("WARNING: Failed to allocate large block\n", RED);
     }
+    kfree(large_block);
 
     printf("New heap_end: %p\n", heap_end);
 }
@@ -736,8 +737,8 @@ void debug_page_mapping(uint32_t address)
     uint32_t pd_index = address >> 22;
     uint32_t pt_index = (address >> 12) & 0x3FF;
 
-    printf("\nDebug mapping for address 0x%x\n", address);
-    printf(" PDE index: %d, PDE entry: 0x%x\n", 
+    printf("\nDebug mapping for address %x\n", address);
+    printf(" PDE index: %d, PDE entry: %x\n", 
             pd_index, page_directory[pd_index]);
 
     if (page_directory[pd_index] & PAGE_PRESENT)
@@ -766,6 +767,8 @@ static void test_kmalloc()
             set_putchar_colour(LIGHT_GREY);
             return;
         }
+        memset(vm, 'A', size);
+
         void* vm2 = kmalloc(size);
         if (!vm2)
         {
@@ -774,20 +777,27 @@ static void test_kmalloc()
             set_putchar_colour(LIGHT_GREY);
             return;
         }
-
+        memset(vm2, 'A', size);
+        if (memcmp(vm, vm2, size) != 0)
+        {
+            set_putchar_colour(RED);
+            printf("vmalloc: memory corruption detected!\n");
+            set_putchar_colour(LIGHT_GREY);
+            kernel_panic("vmalloc: memory corruption detected!\n");
+        }
         if (i%10 == 0)
         {
             puts_color(" 10 x Memory test passed\n", GREEN);
             // printf("Allocated vm: %p\n", vm);
             // printf("Allocated vm: %p\n", vm2);
         }
-        // while(1);
+
         kfree(vm);
         kfree(vm2);
     }
 
-    size = MB(50);
-    printf("Allocating %z bytes with vmalloc\n", size);
+    size = MB(10);
+    printf("Allocating %z bytes with kmalloc\n", size);
     void* vm1 = kmalloc(size);
     if (!vm1)
     {
@@ -803,14 +813,14 @@ static void test_kmalloc()
     kfree(vm1);
 }
 
-
 static void test_vmalloc()
 {
+    printf("start of vmalloc: %p", vblock_list);
     size_t size;
     for (int i = 0; i < 500; i++)
     {
         size = MB(1);
-        void* vm = vmalloc(size, i%2?true:false);
+        void* vm = vmalloc(size, false);
         if (!vm)
         {
             set_putchar_colour(RED);
@@ -818,7 +828,7 @@ static void test_vmalloc()
             set_putchar_colour(LIGHT_GREY);
             return;
         }
-        void* vm2 = vmalloc(size, i%2?true:false);
+        void* vm2 = vmalloc(size, false);
         if (!vm2)
         {
             set_putchar_colour(RED);
@@ -844,7 +854,7 @@ static void test_vmalloc()
         vfree(vm2);
     }
 
-    size = MB(60);
+    size = MB(12);
     printf("Allocating %z bytes with vmalloc\n", size);
     void* vm1 = vmalloc(size, true);
     if (!vm1)

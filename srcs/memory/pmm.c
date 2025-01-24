@@ -3,7 +3,7 @@
 #include "../display/display.h"
 
 #define PAGE_SIZE   0x1000
-#define MAX_FRAMES  1024*256  // Example: up to 1 GB / 4 KB = 262,144 frames
+#define MAX_FRAMES 1024 * 1024  // Increase to support larger memory allocations
 
 static uint8_t frame_bitmap[MAX_FRAMES / 8]; 
 // 1 bit per frame, so each bit says: used(1)/free(0). 
