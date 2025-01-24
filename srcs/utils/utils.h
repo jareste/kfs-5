@@ -4,6 +4,8 @@
 #include "stdint.h"
 #define NULL (void*)0
 #define UNUSED(x); (void)(x);
+#define MB(x) ((x) * 1024 * 1024) /* Convert MB to bytes */
+#define KB(x) (x * 1024) /* Convert KB to bytes */
 
 typedef enum bool {
     false = 0,

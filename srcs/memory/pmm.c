@@ -27,21 +27,22 @@ static inline bool is_frame_used(uint32_t frame_number) {
 void pmm_init()
 {
     /* Mark everything used by default */
-    // In pmm_init:
-    // Mark frames from 0..1MB as used:
     for (uint32_t f = 0; f < (0x100000 / PAGE_SIZE); f++)
     {
         set_frame_used(f);
     }
 
-    // Then mark frames from 1MB..64MB as free
-    for (uint32_t f = (0x100000 / PAGE_SIZE); f < (64 * 1024 * 1024 / PAGE_SIZE); f++)
+    /* Initialize the rest as free
+    */
+    for (uint32_t f = (0x100000 / PAGE_SIZE); f < (MB(64) / PAGE_SIZE); f++)
     {
         set_frame_free(f);
     }
 
-    // Next, re‐mark the exact region the kernel occupies as used again
-    // e.g. from 1MB to 1.2MB if that's your kernel size
+    /* TODO:
+     * Maybe I must parse BIOS memory map to free all the regions that are free
+     * and mark the used regions as used. So for now it is ok but not correct.
+     */
     for (uint32_t f = 0x100000 / PAGE_SIZE; f < 0x120000 / PAGE_SIZE; f++)
     {
         set_frame_used(f);

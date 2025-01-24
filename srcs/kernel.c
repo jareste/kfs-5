@@ -24,10 +24,6 @@ void kernel_main()
     enable_interrupts();
     
     puts("Welcome to the kernel\n");
-    kdump((void*)0x1000, 16); // Dump a region of memory
-    puts("\n");
-    kdump(&endkernel, 0x10);
-    printf("Kernel end: %x\n", &endkernel);
 
     heap_init();
 

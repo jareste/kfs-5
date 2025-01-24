@@ -105,8 +105,6 @@ void init_kshell()
 
     current_section = GENERAL;
 
-    printf("sizeof(command_sections): %d\n", sizeof(section_t));
-
     install_all_cmds(global_commands, GLOBAL);
     install_all_cmds(in_commands, GENERAL);
     install_all_cmds(dcommand, DEBUG);
@@ -276,7 +274,7 @@ static void cmd_section()
     char* buffer = get_kb_buffer();
     buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
     uint32_t section = (uint32_t)hex_string_to_int(buffer);
-    printf("Section: %x\n", section);
+    printf("Section: %s\n", command_sections[section].name);
     current_section = section;
     clear_kb_buffer();
 }

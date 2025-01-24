@@ -18,8 +18,6 @@ extern uint32_t endkernel;
 #define HEAP_SIZE_  0x100000  /* 1 MB heap size */
 #define ALIGN_4K(x)  (((x) + 0xFFF) & ~0xFFF) /* 4 KB alignment */
 #define ALIGN_8(x) (((x) + 0x7) & ~0x7) /* 8-byte alignment */
-#define MB(x) (x * 1024 * 1024) /* Convert MB to bytes */
-#define KB(x) (x * 1024) /* Convert KB to bytes */
 #define MAX_HEAP_SIZE (20 * 1024 * 1024) /* Allow up to 64MB */
 
 #define PAGE_PRESENT  0x1
@@ -128,8 +126,7 @@ void paging_init()
         if (!(page_directory[pd_index] & PAGE_PRESENT))
         {
             uint32_t pt_phys = allocate_frame();
-            if (!pt_phys)
-                kernel_panic("paging_init: out of frames for PDE\n");
+            if (!pt_phys) kernel_panic("paging_init: out of frames for PDE\n");
 
             memset((void*)pt_phys, 0, PAGE_SIZE); 
 
@@ -200,8 +197,10 @@ void heap_init()
 /*                                                                            */
 /*############################################################################*/
 
-void* kbrk(void* addr) {
-    if ((uintptr_t)addr > HEAP_START + MAX_HEAP_SIZE) {
+void* kbrk(void* addr)
+{
+    if ((uintptr_t)addr > HEAP_START + MAX_HEAP_SIZE)
+    {
         puts_color("WARNING: Heap exceeds maximum limit!\n", RED);
         return (void*)-1;
     }
@@ -209,11 +208,13 @@ void* kbrk(void* addr) {
     uint32_t new_heap_end = ALIGN_4K((uintptr_t)addr);
     uint32_t current_heap_end = ALIGN_4K((uintptr_t)heap_end);
 
-    while (current_heap_end < new_heap_end) {
+    while (current_heap_end < new_heap_end)
+    {
         uint32_t pd_index = current_heap_end >> 22;
         uint32_t pt_index = (current_heap_end >> 12) & 0x3FF;
 
-        if (!(page_directory[pd_index] & PAGE_PRESENT)) {
+        if (!(page_directory[pd_index] & PAGE_PRESENT))
+        {
             uint32_t pt_phys = allocate_frame();
             if (!pt_phys) kernel_panic("kbrk: Failed to allocate page table frame!");
 
@@ -222,7 +223,8 @@ void* kbrk(void* addr) {
         }
 
         page_table_t* table = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-        if (!((*table)[pt_index] & PAGE_PRESENT)) {
+        if (!((*table)[pt_index] & PAGE_PRESENT))
+        {
             uint32_t phys_frame = allocate_frame();
             if (!phys_frame) kernel_panic("kbrk: Failed to allocate frame!");
 
@@ -331,30 +333,6 @@ void kfree(void* ptr)
         free_list = block;
     }
 }
-// void kfree(void* ptr)
-// {
-//     if (!ptr) return;
-
-//     block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
-//     block->free = 1;
-
-//     /* Coalesce adjacent free blocks */
-//     block_header_t* current = block;
-//     while (current)
-//     {
-//         if (current->free && current->next && current->next->free)
-//         {
-//             current->size += sizeof(block_header_t) + current->next->size;
-//             current->next = current->next->next;
-//         }
-//         current = current->next;
-//     }
-//     if (block < free_list)
-//     {
-//         free_list = block;
-//     }
-
-// }
 
 size_t ksize(void* ptr)
 {
@@ -363,7 +341,6 @@ size_t ksize(void* ptr)
     block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
     return block->size;
 }
-
 
 /*############################################################################*/
 /*                                                                            */
@@ -387,10 +364,7 @@ static void map_new_page(uintptr_t vaddr, bool is_user)
     if (!(page_directory[pd_index] & PAGE_PRESENT))
     {
         uint32_t pt_phys = allocate_frame();
-        if (!pt_phys)
-        {
-            kernel_panic("Out of frames for PDE!\n");
-        }
+        if (!pt_phys) kernel_panic("Out of frames for PDE!\n");
 
         memset((void*)pt_phys, 0, PAGE_SIZE);
         page_directory[pd_index] = (pt_phys & ~0xFFF) | pde_flags;
@@ -398,10 +372,7 @@ static void map_new_page(uintptr_t vaddr, bool is_user)
 
     page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
     uint32_t frame_phys = allocate_frame();
-    if (!frame_phys)
-    {
-        kernel_panic("Out of frames for PTE!\n");
-    }
+    if (!frame_phys) kernel_panic("Out of frames for PTE!\n");
 
     memset((void*)frame_phys, 0, PAGE_SIZE);
 
@@ -432,19 +403,26 @@ static void unmap_page(uintptr_t vaddr)
     /* TODO: Free the page if it's not used at all. */
 }
 
-void* vbrk(void* addr, bool is_user) {
+void* vbrk(void* addr, bool is_user)
+{
     uintptr_t new_end = (uintptr_t)addr;
-    if (new_end < VMALLOC_START || new_end > VMALLOC_END) {
+    if (new_end < VMALLOC_START || new_end > VMALLOC_END)
+    {
         puts_color("vbrk: out of vmalloc region!\n", RED);
         return (void*)-1;
     }
 
-    if (new_end > vheap_end) {
-        for (uintptr_t p = vheap_end; p < new_end; p += PAGE_SIZE) {
+    if (new_end > vheap_end)
+    {
+        for (uintptr_t p = vheap_end; p < new_end; p += PAGE_SIZE)
+        {
             map_new_page(p, is_user);
         }
-    } else if (new_end < vheap_end) {
-        for (uintptr_t p = new_end; p < vheap_end; p += PAGE_SIZE) {
+    }
+    else if (new_end < vheap_end)
+    {
+        for (uintptr_t p = new_end; p < vheap_end; p += PAGE_SIZE)
+        {
             unmap_page(p);
         }
     }
@@ -506,13 +484,9 @@ void* vmalloc(size_t size, bool is_user)
     new_block->next = NULL;
 
     if (prev)
-    {
         prev->next = new_block;
-    }
     else
-    {
         vblock_list = new_block;
-    }
 
     return (void*)((char*)new_block + sizeof(vblock_header_t));
 }
@@ -524,7 +498,6 @@ void vfree(void* ptr)
     vblock_header_t* block = (vblock_header_t*)((char*)ptr - sizeof(vblock_header_t));
     block->free = 1;
 
-    // Coalesce adjacent free blocks
     vblock_header_t* current = vblock_list;
     while (current)
     {
@@ -593,8 +566,6 @@ void dump_page_directory()
     {
         if (page_directory[i] & PAGE_PRESENT)
         {
-            // PDE present
-            // Extract PDE flags
             uint32_t pde_flags = page_directory[i] & 0xFFF;     // low 12 bits
             uint32_t pde_base  = page_directory[i] & 0xFFFFF000; // top 20 bits
 
@@ -633,7 +604,8 @@ void dump_page_directory()
 
 static void dump_page_table(uint32_t directory_index)
 {
-    debug_page_mapping(0x00415000);
+    puts_color("Test not working as intended as it's been modified\n", RED);
+    debug_page_mapping(directory_index);
     // directory_index = 0;
     // page_table_t* table = (page_table_t*)(page_directory[directory_index] & ~0xFFF);
     // if (!table)
@@ -662,22 +634,23 @@ static void test_dynamic_heap_growth()
 {
     printf("Initial heap_end: %p\n", heap_end);
 
-    void* block1 = kmalloc(64);
+    size_t size = 64;
+    void* block1 = kmalloc(size);
     printf("Allocated block1: %p\n", block1);
 
-    // memset(block1, 'A', MB(1));
-    // for (int i = 0; i < MB(1); i++)
-    // {
-    //     if (((char*)block1)[i] != 'A')
-    //     {
-    //         puts_color("Memory corruption detected in block1!\n", RED);
-    //         break;
-    //     }
-    // }
+    memset(block1, 'A', size);
+    for (int i = 0; i < size; i++)
+    {
+        if (((char*)block1)[i] != 'A')
+        {
+            puts_color("Memory corruption detected in block1!\n", RED);
+            break;
+        }
+    }
 
     kfree(block1);
 
-    size_t malloc_size = MB(40);
+    size_t malloc_size = MB(10);
     void* large_block = kmalloc(malloc_size);
     if (large_block)
     {
@@ -788,8 +761,6 @@ static void test_kmalloc()
         if (i%10 == 0)
         {
             puts_color(" 10 x Memory test passed\n", GREEN);
-            // printf("Allocated vm: %p\n", vm);
-            // printf("Allocated vm: %p\n", vm2);
         }
 
         kfree(vm);
@@ -815,7 +786,6 @@ static void test_kmalloc()
 
 static void test_vmalloc()
 {
-    printf("start of vmalloc: %p", vblock_list);
     size_t size;
     for (int i = 0; i < 500; i++)
     {
