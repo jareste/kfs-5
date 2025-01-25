@@ -40,6 +40,7 @@ void page_fault_handler(registers* regs, error_state* stack)
 
 
     debug_page_mapping(faulting_address);
+    while(1);
 
     NEVER_HERE;
 } /* PAGE FAULT HANDLER */
@@ -52,6 +53,11 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(intr_no)
 
     printf("Interrupt SW number: %d\n", intr_no);
+
+    if (intr_no == 14)
+    {
+        page_fault_handler(&reg, &stack);
+    }
 
     kill(0, intr_no);
     handle_signals();

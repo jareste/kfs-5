@@ -80,6 +80,7 @@ void dump_page_directory();
 static page_directory_t page_directory __attribute__((aligned(PAGE_SIZE)));
 
 static block_header_t* free_list = NULL;
+static block_header_t* heap_started;
 static void* heap_end;
 static size_t HEAP_SIZE;
 
@@ -139,6 +140,7 @@ void paging_init()
 
     asm volatile("mov %0, %%cr3" :: "r"(page_directory));
 
+    // free_list = (block_header_t*)page_directory[0];
     /* Enable paging */
     uint32_t cr0;
     asm volatile("mov %%cr0, %0" : "=r"(cr0));
@@ -149,6 +151,7 @@ void paging_init()
 void heap_init()
 {
     heap_end = (void*)ALIGN_4K((uintptr_t)HEAP_START);
+    free_list = NULL;
     install_all_cmds(commands, MEMORY);
 }
 
@@ -304,6 +307,7 @@ void* kmalloc(size_t size)
     else
     {
         free_list = new_block;
+        heap_started = free_list;
     }
 
     void* allocated_mem = (char*)new_block + sizeof(block_header_t);
@@ -317,7 +321,14 @@ void kfree(void* ptr)
     block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
     block->free = 1;
 
-    block_header_t* current = free_list;
+    block_header_t* current = heap_started;
+    // block_header_t* prev = NULL;
+
+    printf("kfree: block: %p, size: %d\n", block, block->size);
+    printf("free_list: %p\n", free_list);
+    printf("current: %p\n", current->next);
+    printf("current: %p\n", current->next->next);
+
     while (current)
     {
         if (current->free && current->next && current->next->free)
@@ -325,15 +336,28 @@ void kfree(void* ptr)
             current->size += sizeof(block_header_t) + current->next->size;
             current->next = current->next->next;
         }
+        // prev = current;
         current = current->next;
     }
 
-    if (block < free_list)
-    {
-        free_list = block;
-    }
+    // if (prev && prev->free && block->free)
+    // {
+    //     prev->size += sizeof(block_header_t) + block->size;
+    //     prev->next = block->next;
+    //     printf("kfree: merged with previous block\n");
+    //     printf("prev: %p, block: %p, size: %z\n", prev, block, prev->size);
+    //     printf("next: %p\n", prev->next);
+    //     // while(1);
+    // }
+    // else if (block < free_list)
+    // {
+    //     printf("kfree: block is before free_list\n");
+    //     printf("block: %p, free_list: %p\n", block, free_list);
+    //     block->next = free_list;
+    //     free_list = block;
+    //     while(1);
+    // }
 }
-
 size_t ksize(void* ptr)
 {
     if (!ptr) return 0;
@@ -743,10 +767,16 @@ static void test_kmalloc()
     void* vm1;
     void* vm2;
 
+    printf("Before kmalloc:\n");
+    show_kernel_allocations();
+    dump_page_directory();
+
     for (i = 0; i < 500; i++)
     {
         size = MB(1);
+        puts_color("Allocating vm\n", GREEN);
         vm = kmalloc(size);
+        puts_color("Allocated vm\n", GREEN);
         if (!vm)
         {
             set_putchar_color(RED);
@@ -755,8 +785,8 @@ static void test_kmalloc()
             return;
         }
         memset(vm, 'A', size);
-
         vm2 = kmalloc(size);
+        puts_color("Allocated vm2\n", GREEN);
         if (!vm2)
         {
             set_putchar_color(RED);
@@ -782,7 +812,7 @@ static void test_kmalloc()
     }
 
     size = MB(10);
-    printf("Allocating %z bytes with kmalloc\n", size);
+    // printf("Allocating %z bytes with kmalloc\n", size);
     vm1 = kmalloc(size);
     if (!vm1)
     {
@@ -791,11 +821,14 @@ static void test_kmalloc()
         set_putchar_color(LIGHT_GREY);
         return;
     }
-    printf("Allocated vm1: %p\n", vm1);
-    printf("Size of vm1: %z\n", ksize(vm1));
-    printf("Size of vm1: %z\n", size);
+    // printf("Allocated vm1: %p\n", vm1);
+    // printf("Size of vm1: %z\n", ksize(vm1));
+    // printf("Size of vm1: %z\n", size);
     memset(vm1, 'A', size);
     kfree(vm1);
+    printf("After kmalloc:\n");
+    show_kernel_allocations();
+    dump_page_directory();
 }
 
 static void test_vmalloc()
@@ -805,6 +838,10 @@ static void test_vmalloc()
     void* vm1;
     void* vm2;
     int i;
+
+    printf("Before vmalloc:\n");
+    show_user_allocations();
+    dump_page_directory();
 
     for (i = 0; i < 500; i++)
     {
@@ -844,7 +881,7 @@ static void test_vmalloc()
     }
 
     size = MB(12);
-    printf("Allocating %z bytes with vmalloc\n", size);
+    // printf("Allocating %z bytes with vmalloc\n", size);
     vm1 = vmalloc(size, true);
     if (!vm1)
     {
@@ -853,11 +890,14 @@ static void test_vmalloc()
         set_putchar_color(LIGHT_GREY);
         return;
     }
-    printf("Allocated vm1: %p\n", vm1);
-    printf("Size of vm1: %z\n", vsize(vm1));
-    printf("Size of vm1: %z\n", size);
+    // printf("Allocated vm1: %p\n", vm1);
+    // printf("Size of vm1: %z\n", vsize(vm1));
+    // printf("Size of vm1: %z\n", size);
     memset(vm1, 'A', size);
     vfree(vm1);
+    printf("After vmalloc:\n");
+    show_user_allocations();
+    dump_page_directory();
 }
 
 static void show_kernel_allocations()
