@@ -133,6 +133,14 @@ static void set_kb_char(char c)
     keyb_buff_end = (keyb_buff_end + 1) % KEYBOARD_BUFFER_SIZE;
 }
 
+char* get_line()
+{
+    char c;
+    while ((c = get_last_char()) != '\n');
+    keyboard_buffer[keyb_buff_end] = '\0';
+    return keyboard_buffer;
+}
+
 static void delete_last_kb_char()
 {
     if (keyb_buff_end == 0)
@@ -144,6 +152,7 @@ static void delete_last_kb_char()
         keyb_buff_end--;
     }
     keyboard_buffer[keyb_buff_end] = 0;
+    delete_last_char();
 }
 
 void clear_kb_buffer()
@@ -153,83 +162,82 @@ void clear_kb_buffer()
     memset(keyboard_buffer, 0, KEYBOARD_BUFFER_SIZE);
 }
 
+static char get_ascii_char(uint8_t scancode)
+{
+    if (scancode & 0x80 || scancode >= 128)  // key release or invalid scancode
+    {
+        return 0;
+    }
+
+    if (shift_pressed)
+    {
+        return shifted_scancode_to_ascii[scancode];
+    }
+    else
+    {
+        return scancode_to_ascii[scancode];
+    }
+}
+
 void keyboard_handler()
 {
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
     char key = 0;
 
-    if (scancode == 0x2A || scancode == 0x36)
+    switch (scancode)
     {
-        shift_pressed = true; // Left or Right Shift pressed
-    }
-    else if (scancode == 0x1D)
-    {
-        ctrl_pressed = true; // Control pressed
-    }
-    else if (scancode == 0xAA || scancode == 0xB6)
-    {
-        shift_pressed = false; // Left or Right Shift released
-    }
-    else if (scancode == 0x9D)
-    {
-        ctrl_pressed = false; // Control released
-    }
-    else if (scancode == 0x4B) // Left Arrow
-    {
-        // move_cursor_left();
-    }
-    else if (scancode == 0x4D) // Right Arrow
-    {
-        // move_cursor_right();
-    }
-    else if (scancode == 0x48)
-    {
-        // move_cursor_up();
-    }
-    else if (scancode == 0x50) // Down Arrow
-    {
-        // move_cursor_down();
-    }
-    else if (scancode == 0x0F) // Tab
-    {
-        puts("    ");
-    }
-    else if (scancode == 0x53) // Delete
-    {
-        delete_actual_char();
-    }
-    else if (scancode < 128)
-    {
-        if (scancode == 0x01)
-        {
+        case 0x2A:
+        case 0x36:
+            shift_pressed = true;
+            break;
+        case 0xAA:
+        case 0xB6:
+            shift_pressed = false;
+            break;
+        case 0x1D:
+            ctrl_pressed = true;
+            break;
+        case 0x9D:
+            ctrl_pressed = false;
+            break;
+        case 0x4B:
+            // move_cursor_left();
+            break;
+        case 0x4D:
+            // move_cursor_right();
+            break;
+        case 0x48:
+            // move_cursor_up();
+            break;
+        case 0x50:
+            // move_cursor_down();
+            break;
+        case 0x0F:
+            puts("    ");
+            break;
+        case 0x53:
+            // delete_actual_char(); // better do nothing for now. it's delete
+            break;
+        case 0x01:
             clear_screen();
-        }
-        else if (scancode == 0x0E)
-        {
+            break;
+        case 0x0E:
             if (ctrl_pressed)
             {
                 delete_until_char();
             }
             else
             {
-                delete_last_char();
                 delete_last_kb_char();
             }
-        }
-        else 
-        {
-            key = shift_pressed ? shifted_scancode_to_ascii[scancode] : scancode_to_ascii[scancode];
-            if (ctrl_pressed && ((key == 'r') || (key == 'R')))
-            {
-                clear_screen();
-                key = 0;
-            }
+            break;
+        default:
+            key = get_ascii_char(scancode);
             if (key)
             {
                 putc(key);
                 set_kb_char(key);
             }
-        }
     }
 
     outb(PIC1_COMMAND, PIC_EOI);

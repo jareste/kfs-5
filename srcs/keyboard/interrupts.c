@@ -49,37 +49,39 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(stack)
     UNUSED(err_code)
     UNUSED(intr_no)
-    disable_interrupts();
+
     printf("Interrupt SW number: %d\n", intr_no);
+
     kill(0, intr_no);
     handle_signals();
+    
+    if (intr_no >= 32)
+    {
+        outb(PIC_EOI, PIC1_COMMAND);
+    }
 
-	outb(PIC_EOI, PIC1_COMMAND);
-	enable_interrupts();
 }
 
 void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {
 	(void) err_code;
+    (void) stack;
+    (void) reg;
 
-    // puts("Interrupt handler entered\n");
-    // printf("Interrupt number: %d\n", intr_no);
-	disable_interrupts();
+    switch (intr_no)
+    {
+        case 0:
+            irq_handler_timer();
+            break;
+        case 1:
+            keyboard_handler();
+            break;
+        default:
+            printf("Interrupt HW number: %d\n", intr_no);
+            kernel_panic("Unknown interrupt");
+    }
+
 	outb(PIC_EOI, PIC1_COMMAND);
-	if (intr_no == 1)
-	{
-		keyboard_handler();
-	}
-    else if (intr_no == 0)
-    {
-        irq_handler_timer();
-    }
-    else
-    {
-        printf("Interrupt HW number: %d\n", intr_no);
-        kernel_panic("Unknown interrupt");
-    }
-	enable_interrupts();
 }
 
 void init_interrupts()
