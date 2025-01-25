@@ -9,6 +9,6 @@
 #define SYS_CLOSE   4
 #define SYS_GETPID  5
 
-void syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack);
+int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack);
 
 #endif // SYSCALLS_H

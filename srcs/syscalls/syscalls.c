@@ -32,17 +32,12 @@ int sys_close(int fd)
     return 0;
 }
 
-void syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
+int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {
-    puts("Syscall Handler\n");
-
     uint32_t syscall_number = reg.eax;
     uint32_t arg1 = reg.ebx;
     uint32_t arg2 = reg.ecx;
     uint32_t arg3 = reg.edx;
-
-    printf("Syscall number: %d\n", syscall_number);
-    printf("Arguments: %d, %s, %d\n", arg1, (const char*)arg2, arg3);
 
     uint32_t ret_value = 0;
 
@@ -68,16 +63,5 @@ void syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_s
             break;
     }
 
-    reg.eax = 10;
-
-}
-
-void debug_syscall_enter()
-{
-    printf("Entering syscall handler\n");
-}
-
-void debug_syscall_exit()
-{
-    printf("Exiting syscall handler\n");
+    return ret_value;
 }

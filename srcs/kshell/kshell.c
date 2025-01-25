@@ -32,6 +32,7 @@ static void help_global();
 static void ks_kill();
 static void trigger_interrupt_software_0();
 static void trigger_interrupt_software_6();
+static void test_syscall();
 
 static command_section_t command_sections[MAX_SECTIONS];
 
@@ -63,6 +64,7 @@ static command_t dcommand[] = {
     {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
     {"raise0", "Raise a division by zero exception", trigger_interrupt_software_0},
     {"raise6", "Raise an invalid opcode exception", trigger_interrupt_software_6},
+    {"syscall", "Test syscalls", test_syscall},
     {NULL, NULL, NULL}
 };
 
@@ -346,43 +348,44 @@ static void trigger_interrupt_software_6()
     printf("Kernel end: %d\n", j / i);
 }
 
-#include "../syscalls/syscalls.h"
+static void test_syscall()
+{
+    int return_value;
 
-void test_syscall() {
-    // const char* msg = "Hello, world!\n";
-    // size_t msg_len = 14; // Length of the message
-
-    // asm volatile (
-    //     "mov $1, %%eax\n"  // Syscall number (SYS_WRITE)
-    //     "mov $1, %%ebx\n"  // File descriptor (stdout)
-    //     "mov %0, %%ecx\n"  // Buffer to write (message)
-    //     "mov %1, %%edx\n"  // Number of bytes to write (message length)
-    //     "int $0x80\n"      // Trigger syscall
-    //     :
-    //     : "r"(msg), "r"(msg_len)
-    //     : "eax", "ebx", "ecx", "edx"
-    // );
+    /* TEST EXIT */
     asm volatile (
-        "mov $0, %%eax\n"  // Syscall number (SYS_EXIT)
-        "mov $42, %%ebx\n" // Exit status
-        "int $0x80\n"      // Trigger syscall
-        :
+        "mov $0, %%eax\n"
+        "mov $42, %%ebx\n"
+        "int $0x80\n"
+        "mov %%eax, %0\n"
+        : "=r"(return_value)
         :
         : "eax", "ebx"
     );
+    printf("SYS_EXIT return value: %d\n", return_value);
 
+    /* TEST WRITE */
+    const char* msg = "Hello, world!";
+    size_t msg_len = 13;
+
+    asm volatile (
+        "mov $1, %%eax\n"
+        "mov $1, %%ebx\n"
+        "mov %1, %%ecx\n"
+        "mov %2, %%edx\n"
+        "int $0x80\n"
+        "mov %%eax, %0\n"
+        : "=r"(return_value)
+        : "r"(msg), "r"(msg_len)
+        : "eax", "ebx", "ecx", "edx"
+    );
+    printf("SYS_WRITE return value: %d\n", return_value);
 }
-
-// void kernel_main() {
-// }
 
 void kshell()
 {
     int i = 0;
     command_t* commands;
-
-    // init_syscalls();
-    test_syscall();
 
     printf("jareste-OS> ");
     while (1)

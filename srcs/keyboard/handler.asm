@@ -48,11 +48,9 @@ common_isr_handler:
 global syscall_handler_asm
 syscall_handler_asm:
     pusha
-
     call syscall_handler
-
+    mov [esp + 28], eax
     popa
-
     iret
 
 ; handles irqs (hardware interrupts)
