@@ -60,7 +60,6 @@ static command_t dcommand[] = {
     {"halt", "Halt the system.", halt},
     {"sudo halt", "Halt the system. (Stops it).", hhalt},
     {"reg", "Dumps Registers", dump_registers},
-    {"panic", "Kernel Panic", kernel_panic},
     {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
     {"raise0", "Raise a division by zero exception", trigger_interrupt_software_0},
     {"raise6", "Raise an invalid opcode exception", trigger_interrupt_software_6},
