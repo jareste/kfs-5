@@ -103,5 +103,6 @@ extern void irq_handler_13();
 extern void irq_handler_14();
 extern void irq_handler_15();
 
+extern void syscall_handler_asm();
 
 #endif

@@ -346,10 +346,43 @@ static void trigger_interrupt_software_6()
     printf("Kernel end: %d\n", j / i);
 }
 
+#include "../syscalls/syscalls.h"
+
+void test_syscall() {
+    // const char* msg = "Hello, world!\n";
+    // size_t msg_len = 14; // Length of the message
+
+    // asm volatile (
+    //     "mov $1, %%eax\n"  // Syscall number (SYS_WRITE)
+    //     "mov $1, %%ebx\n"  // File descriptor (stdout)
+    //     "mov %0, %%ecx\n"  // Buffer to write (message)
+    //     "mov %1, %%edx\n"  // Number of bytes to write (message length)
+    //     "int $0x80\n"      // Trigger syscall
+    //     :
+    //     : "r"(msg), "r"(msg_len)
+    //     : "eax", "ebx", "ecx", "edx"
+    // );
+    asm volatile (
+        "mov $0, %%eax\n"  // Syscall number (SYS_EXIT)
+        "mov $42, %%ebx\n" // Exit status
+        "int $0x80\n"      // Trigger syscall
+        :
+        :
+        : "eax", "ebx"
+    );
+
+}
+
+// void kernel_main() {
+// }
+
 void kshell()
 {
     int i = 0;
     command_t* commands;
+
+    // init_syscalls();
+    test_syscall();
 
     printf("jareste-OS> ");
     while (1)

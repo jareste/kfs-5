@@ -1,6 +1,7 @@
 ; Defined in interrupts.c
 [extern isr_handler]
 [extern irq_handler]
+[extern syscall_handler]
 
 %macro no_error_code_isr_handler 1
 	global isr_handler_%1
@@ -43,6 +44,16 @@ common_isr_handler:
 
 	; iret call
 	iret
+
+global syscall_handler_asm
+syscall_handler_asm:
+    pusha
+
+    call syscall_handler
+
+    popa
+
+    iret
 
 ; handles irqs (hardware interrupts)
 common_irq_handler:

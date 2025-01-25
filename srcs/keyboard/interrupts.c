@@ -6,6 +6,7 @@
 #include "../memory/memory.h"
 #include "keyboard.h"
 #include "signals.h"
+#include "../syscalls/syscalls.h"
 
 void enable_interrupts(void)
 {
@@ -55,6 +56,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     kill(0, intr_no);
     handle_signals();
     
+    while(1);
     if (intr_no >= 32)
     {
         outb(PIC_EOI, PIC1_COMMAND);
@@ -77,6 +79,8 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
             keyboard_handler();
             break;
         default:
+        printf("eax: %d\n", reg.eax);
+        printf("ebx: %d\n", reg.ebx);
             printf("Interrupt HW number: %d\n", intr_no);
             kernel_panic("Unknown interrupt");
     }
@@ -155,6 +159,7 @@ void init_interrupts()
     idt_set_gate(46, (uint32_t)irq_handler_14); /* Primary ATA Hard Disk */
     idt_set_gate(47, (uint32_t)irq_handler_15); /* Secondary ATA Hard Disk */
 
+    idt_set_gate(0x80, (uint32_t)syscall_handler_asm);
 
     register_idt();
 }
