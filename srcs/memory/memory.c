@@ -632,14 +632,19 @@ void K2()
 /* A big test. */
 static void test_dynamic_heap_growth()
 {
+    size_t size;
+    void* block1;
+    void* large_block;
+    size_t i;
+
     printf("Initial heap_end: %p\n", heap_end);
 
-    size_t size = 64;
-    void* block1 = kmalloc(size);
+    size = 64;
+    block1 = kmalloc(size);
     printf("Allocated block1: %p\n", block1);
 
     memset(block1, 'A', size);
-    for (int i = 0; i < size; i++)
+    for (i = 0; i < size; i++)
     {
         if (((char*)block1)[i] != 'A')
         {
@@ -650,14 +655,14 @@ static void test_dynamic_heap_growth()
 
     kfree(block1);
 
-    size_t malloc_size = MB(10);
-    void* large_block = kmalloc(malloc_size);
+    size = MB(10);
+    large_block = kmalloc(size);
     if (large_block)
     {
         printf("Allocated large_block: %p\n", large_block);
 
-        memset(large_block, 'B', malloc_size);
-        for (size_t i = 0; i < malloc_size; i++)
+        memset(large_block, 'B', size);
+        for (i = 0; i < size; i++)
         {
             if (((char*)large_block)[i] != 'B')
             {
@@ -678,7 +683,10 @@ static void test_dynamic_heap_growth()
 
 static void test_mem()
 {
-    void* block1 = kmalloc(64);
+    void* block1;
+    void* block2;
+
+    block1 = kmalloc(64);
     printf("Allocated block1: %p (size=%z)\n", block1, ksize(block1));
 
     /* Fill it with data */
@@ -688,7 +696,7 @@ static void test_mem()
     kfree(block1);
 
     /* Another test: 2 MB */
-    void* block2 = kmalloc(2 * 1024 * 1024);
+    block2 = kmalloc(2 * 1024 * 1024);
     printf("Allocated block2: %p (size=%z)\n", block2, ksize(block2));
     kfree(block2);
 
@@ -709,6 +717,7 @@ void debug_page_mapping(uint32_t address)
 {
     uint32_t pd_index = address >> 22;
     uint32_t pt_index = (address >> 12) & 0x3FF;
+    page_table_t* pt;
 
     printf("\nDebug mapping for address %x\n", address);
     printf(" PDE index: %d, PDE entry: %x\n", 
@@ -716,7 +725,7 @@ void debug_page_mapping(uint32_t address)
 
     if (page_directory[pd_index] & PAGE_PRESENT)
     {
-        page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
+        pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
         printf("  PTE index: %d, PTE entry: 0x%x\n", 
                 pt_index, (*pt)[pt_index]);
     }
@@ -729,10 +738,15 @@ void debug_page_mapping(uint32_t address)
 static void test_kmalloc()
 {
     size_t size;
-    for (int i = 0; i < 500; i++)
+    int i;
+    void* vm;
+    void* vm1;
+    void* vm2;
+
+    for (i = 0; i < 500; i++)
     {
         size = MB(1);
-        void* vm = kmalloc(size);
+        vm = kmalloc(size);
         if (!vm)
         {
             set_putchar_color(RED);
@@ -742,7 +756,7 @@ static void test_kmalloc()
         }
         memset(vm, 'A', size);
 
-        void* vm2 = kmalloc(size);
+        vm2 = kmalloc(size);
         if (!vm2)
         {
             set_putchar_color(RED);
@@ -769,7 +783,7 @@ static void test_kmalloc()
 
     size = MB(10);
     printf("Allocating %z bytes with kmalloc\n", size);
-    void* vm1 = kmalloc(size);
+    vm1 = kmalloc(size);
     if (!vm1)
     {
         set_putchar_color(RED);
@@ -787,10 +801,15 @@ static void test_kmalloc()
 static void test_vmalloc()
 {
     size_t size;
-    for (int i = 0; i < 500; i++)
+    void* vm;
+    void* vm1;
+    void* vm2;
+    int i;
+
+    for (i = 0; i < 500; i++)
     {
         size = MB(1);
-        void* vm = vmalloc(size, false);
+        vm = vmalloc(size, false);
         if (!vm)
         {
             set_putchar_color(RED);
@@ -798,7 +817,7 @@ static void test_vmalloc()
             set_putchar_color(LIGHT_GREY);
             return;
         }
-        void* vm2 = vmalloc(size, false);
+        vm2 = vmalloc(size, false);
         if (!vm2)
         {
             set_putchar_color(RED);
@@ -826,7 +845,7 @@ static void test_vmalloc()
 
     size = MB(12);
     printf("Allocating %z bytes with vmalloc\n", size);
-    void* vm1 = vmalloc(size, true);
+    vm1 = vmalloc(size, true);
     if (!vm1)
     {
         set_putchar_color(RED);
