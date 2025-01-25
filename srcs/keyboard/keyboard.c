@@ -133,13 +133,12 @@ static void set_kb_char(char c)
     keyb_buff_end = (keyb_buff_end + 1) % KEYBOARD_BUFFER_SIZE;
 }
 
-char* get_line()
-{
-    char c;
-    while ((c = get_last_char()) != '\n');
-    keyboard_buffer[keyb_buff_end] = '\0';
-    return keyboard_buffer;
-}
+// char* get_line()
+// {
+//     char c;
+//     while ((c = get_last_char()) != 10);
+//     return get_kb_buffer();
+// }
 
 static void delete_last_kb_char()
 {

@@ -2,11 +2,11 @@
 
 static int cursor_position = 0;
 
-static int colour = LIGHT_GREY;
+static int color = LIGHT_GREY;
 
-void set_putchar_colour(uint8_t c)
+void set_putchar_color(uint8_t c)
 {
-    colour = c;
+    color = c;
 }
 
 static void scroll_screen()
@@ -167,5 +167,5 @@ void putc_color(char c, uint8_t color)
 
 void putc(char c)
 {
-    putc_color(c, colour);
+    putc_color(c, color);
 }

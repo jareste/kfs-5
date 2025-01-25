@@ -23,7 +23,7 @@ static void reboot();
 static void kdump_stack();
 static void halt();
 static void hhalt();
-static void colour();
+static void color();
 static void shutdown();
 static void ksleep();
 static void kuptime();
@@ -49,7 +49,7 @@ static command_t global_commands[] = {
 
 static command_t in_commands[] = {
     {"exit", "Exit the shell", NULL},
-    {"color", "Set shell color", colour},
+    {"color", "Set shell color", color},
     {"uptime", "Get the system uptime in seconds.", kuptime},
     {"kill", "Kill a process", ks_kill},
     {NULL, NULL, NULL}
@@ -70,7 +70,9 @@ static command_t dcommand[] = {
 
 static void install_command(command_t* cmds, const char* cmd, const char* desc, void (*func)())
 {
-    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
+    int i;
+
+    for (i = 0; i < MAX_SECTIONS_COMMANDS; i++)
     {
         if (cmds[i].cmd == NULL)
         {
@@ -84,7 +86,9 @@ static void install_command(command_t* cmds, const char* cmd, const char* desc, 
 
 void install_all_cmds(command_t* cmds, section_t section)
 {
-    for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
+    int i;
+
+    for (i = 0; i < MAX_SECTIONS_COMMANDS; i++)
     {
         if (cmds[i].cmd == NULL)
             break;
@@ -127,84 +131,86 @@ static void kuptime()
 
 static void ksleep()
 {
+    char* buffer;
+    uint32_t seconds;
+
     printf("Enter the number of seconds to sleep: ");
-    clear_kb_buffer();
-    while (getc() != 10);
-    char* buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    uint32_t seconds = (uint32_t)hex_string_to_int(buffer);
+    
+    buffer = get_line();
+
+    seconds = (uint32_t)hex_string_to_int(buffer);
     printf("Sleeping for %d seconds...\n", seconds);
     sleep(seconds);
     printf("Woke up!\n");
-    clear_kb_buffer();
 }
 
 static void ks_kill()
 {
+    char* buffer;
+    pid_t pid;
+    int signal;
+
     printf("Enter the PID to kill: ");
-    clear_kb_buffer();
-    while (getc() != 10);
-    char* buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    pid_t pid = (pid_t)hex_string_to_int(buffer);
+    buffer = get_line();
+    pid = (pid_t)hex_string_to_int(buffer);
     printf("Enter the signal to send: ");
-    clear_kb_buffer();
-    while (getc() != 10);
-    buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    int signal = (int)hex_string_to_int(buffer);
+
+    buffer = get_line();
+
+    signal = (int)hex_string_to_int(buffer);
     printf("Killing PID: %d with signal: %d\n", pid, signal);
     kill(pid, signal);
-    clear_kb_buffer();
 }
 
-static void colour()
+static void color()
 {
-    printf("Available colours:\n");
-    printf("  0: BLACK\n");
-    printf("  1: BLUE\n");
-    printf("  2: GREEN\n");
-    printf("  3: CYAN\n");
-    printf("  4: RED\n");
-    printf("  5: MAGENTA\n");
-    printf("  6: BROWN\n");
-    printf("  7: LIGHT_GREY\n");
-    printf("  8: DARK_GREY\n");
-    printf("  9: LIGHT_BLUE\n");
-    printf("  A: LIGHT_GREEN\n");
-    printf("  B: LIGHT_CYAN\n");
-    printf("  C: LIGHT_RED\n");
-    printf("  D: LIGHT_MAGENTA\n");
-    printf("  E: LIGHT_BROWN\n");
-    printf("  F: WHITE\n");
-    printf("Enter the colour: ");
-    clear_kb_buffer();
-    while (getc() != 10);
-    char* buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    uint32_t colour = (uint32_t)hex_string_to_int(buffer);
-    printf("Colour: %x\n", colour);
-    set_putchar_colour(colour);
+    char* buffer;
+    uint32_t color;
+
+    puts("Available colors:\n");
+    puts("  0: BLACK\n");
+    puts("  1: BLUE\n");
+    puts("  2: GREEN\n");
+    puts("  3: CYAN\n");
+    puts("  4: RED\n");
+    puts("  5: MAGENTA\n");
+    puts("  6: BROWN\n");
+    puts("  7: LIGHT_GREY\n");
+    puts("  8: DARK_GREY\n");
+    puts("  9: LIGHT_BLUE\n");
+    puts("  A: LIGHT_GREEN\n");
+    puts("  B: LIGHT_CYAN\n");
+    puts("  C: LIGHT_RED\n");
+    puts("  D: LIGHT_MAGENTA\n");
+    puts("  E: LIGHT_BROWN\n");
+    puts("  F: WHITE\n");
+    puts("Enter the color: ");
+
+    buffer = get_line();
+
+    color = (uint32_t)hex_string_to_int(buffer);
+    printf("Color: %x\n", color);
+    set_putchar_color(color);
     clear_kb_buffer();
 }
 
 static void halt()
 {
-    printf("Halting system...\n");
+    puts("Halting system...\n");
     __asm__ __volatile__("hlt");
-    printf("System halted\n");
+    puts("System halted\n");
 }
 
 static void hhalt()
 {
-    printf("Halting system... Safe reboot now.\n");
+    puts("Halting system... Safe reboot now.\n");
     __asm__ __volatile__("cli; hlt");
-    printf("System halted\n");
+    puts("System halted\n");
 }
 
 static void help()
 {
-    printf("Available commands:\n");
+    puts("Available commands:\n");
     
     command_t* commands = command_sections[current_section].commands;
 
@@ -220,7 +226,7 @@ static void help()
 
 static void help_global()
 {
-    printf("Available commands:\n");
+    puts("Available commands:\n");
     
     command_t* commands = command_sections[GLOBAL].commands;
 
@@ -241,24 +247,22 @@ static void kdump_stack()
 
 static void ks_kdump()
 {
+    char* buffer;
+    uint32_t addr;
+    uint32_t size;
+
     printf("Known addresses:\n");
     printf("  VIDEO_MEMORY: %x\n", VIDEO_MEMORY);
     printf("  BANNER: %x\n", &BANNER);
     printf("Enter the address to dump: ");
-    clear_kb_buffer();
-    while (getc() != 10);
-    char* buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    uint32_t addr = (uint32_t)hex_string_to_int(buffer);
+    buffer = get_line();
+    
+    addr = (uint32_t)hex_string_to_int(buffer);
     printf("Address: %x\n", addr);
     
-    clear_kb_buffer();
-
     printf("Enter the size to dump: ");
-    while (getc() != 10);
-    buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    uint32_t size = (uint32_t)hex_string_to_int(buffer);
+    buffer = get_line();
+    size = (uint32_t)hex_string_to_int(buffer);
     printf("Size: %x\n", size);
 
     if (size < 0 || size > 0x1000)
@@ -279,7 +283,7 @@ static void reboot()
 
 static void shutdown()
 {
-    printf("Shutting down...\n");
+    puts("Shutting down...\n");
     
     /* Delay for shutdown. */
     for (int i = 0; i < 50; i++) __asm__ __volatile__("hlt");
@@ -290,25 +294,25 @@ static void shutdown()
 
 static void cmd_section()
 {
-    printf("Available sections:\n");
-    for (int i = 0; i < MAX_SECTIONS; i++)
+    int i;
+    char* buffer;
+    uint32_t section;
+
+    puts("Available sections:\n");
+    for (i = 0; i < MAX_SECTIONS; i++)
     {
         printf("  %d: %s\n", i, command_sections[i].name);
     }
-    printf("Enter the section: ");
-    clear_kb_buffer();
-    while (getc() != 10);
-    char* buffer = get_kb_buffer();
-    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-    uint32_t section = (uint32_t)hex_string_to_int(buffer);
+    puts("Enter the section: ");
+    buffer = get_line();
+    section = (uint32_t)hex_string_to_int(buffer);
     if (section < 0 || section >= MAX_SECTIONS)
     {
-        printf("Invalid section\n");
+        puts("Invalid section\n");
         return;
     }
     printf("Section: %s\n", command_sections[section].name);
     current_section = section;
-    clear_kb_buffer();
 }
 
 static bool check_global_cmd(char* cmd)
@@ -348,11 +352,10 @@ static void trigger_interrupt_software_6()
     printf("Kernel end: %d\n", j / i);
 }
 
-static void test_syscall()
+void test_syscall()
 {
     int return_value;
 
-    /* TEST EXIT */
     asm volatile (
         "mov $0, %%eax\n"
         "mov $42, %%ebx\n"
@@ -364,9 +367,8 @@ static void test_syscall()
     );
     printf("SYS_EXIT return value: %d\n", return_value);
 
-    /* TEST WRITE */
-    const char* msg = "Hello, world!";
-    size_t msg_len = 13;
+    const char* msg = "Hello, world!\n";
+    size_t msg_len = strlen(msg);
 
     asm volatile (
         "mov $1, %%eax\n"
@@ -386,47 +388,31 @@ void kshell()
 {
     int i = 0;
     command_t* commands;
+    char* buffer;
 
-    printf("jareste-OS> ");
     while (1)
     {
-        char c = getc();
-        if (c == 10)
+        printf("jareste-OS> ");
+        buffer = get_line();
+
+        if (check_global_cmd(buffer))
+            continue;
+
+        commands = command_sections[current_section].commands;
+        for (i = 0; i < MAX_SECTIONS_COMMANDS; i++)
         {
-            char* buffer = get_kb_buffer();
-            buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
-
-            if (check_global_cmd(buffer))
+            if (commands[i].cmd && (strcmp(buffer, commands[i].cmd) == 0))
             {
-                clear_kb_buffer();
-                printf("jareste-OS> ");
-                continue;
+                if (commands[i].func)
+                    commands[i].func();
+                else
+                    printf("Not implemented yet\n");
+                break;
             }
-
-            commands = command_sections[current_section].commands;
-            for (i = 0; i < MAX_SECTIONS_COMMANDS; i++)
-            {
-                if (commands[i].cmd && (strcmp(buffer, commands[i].cmd) == 0))
-                {
-                    if (commands[i].func)
-                    {
-                        commands[i].func();
-                    }
-                    else
-                    {
-                        printf("Not implemented yet\n");
-                    }
-                    break;
-                }
-            }
-            if (i == MAX_SECTIONS_COMMANDS)
-            {
-                printf("Command '%s' not found. Type 'help' for a list of available commands\n",\
-                 buffer, command_sections[current_section].name, current_section);
-            }
-
-            clear_kb_buffer();
-            printf("jareste-OS> ");
         }
+        if (i == MAX_SECTIONS_COMMANDS)
+            printf("Command '%s' not found. Type 'help' for a list of available commands\n",\
+                buffer, command_sections[current_section].name, current_section);
     }
 }
+

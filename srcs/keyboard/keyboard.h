@@ -9,4 +9,6 @@ char get_last_char_blocking();
 char* get_kb_buffer();
 void clear_kb_buffer();
 
+char* get_line();
+
 #endif

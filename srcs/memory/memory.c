@@ -735,9 +735,9 @@ static void test_kmalloc()
         void* vm = kmalloc(size);
         if (!vm)
         {
-            set_putchar_colour(RED);
+            set_putchar_color(RED);
             printf("vmalloc: failed to allocate %z bytes\n", size);
-            set_putchar_colour(LIGHT_GREY);
+            set_putchar_color(LIGHT_GREY);
             return;
         }
         memset(vm, 'A', size);
@@ -745,17 +745,17 @@ static void test_kmalloc()
         void* vm2 = kmalloc(size);
         if (!vm2)
         {
-            set_putchar_colour(RED);
+            set_putchar_color(RED);
             printf("vmalloc: failed to allocate %z bytes\n", size);
-            set_putchar_colour(LIGHT_GREY);
+            set_putchar_color(LIGHT_GREY);
             return;
         }
         memset(vm2, 'A', size);
         if (memcmp(vm, vm2, size) != 0)
         {
-            set_putchar_colour(RED);
+            set_putchar_color(RED);
             printf("vmalloc: memory corruption detected!\n");
-            set_putchar_colour(LIGHT_GREY);
+            set_putchar_color(LIGHT_GREY);
             kernel_panic("vmalloc: memory corruption detected!\n");
         }
         if (i%10 == 0)
@@ -772,9 +772,9 @@ static void test_kmalloc()
     void* vm1 = kmalloc(size);
     if (!vm1)
     {
-        set_putchar_colour(RED);
+        set_putchar_color(RED);
         printf("vmalloc: failed to allocate %z bytes\n", size);
-        set_putchar_colour(LIGHT_GREY);
+        set_putchar_color(LIGHT_GREY);
         return;
     }
     printf("Allocated vm1: %p\n", vm1);
@@ -793,26 +793,26 @@ static void test_vmalloc()
         void* vm = vmalloc(size, false);
         if (!vm)
         {
-            set_putchar_colour(RED);
+            set_putchar_color(RED);
             printf("vmalloc: failed to allocate %z bytes\n", size);
-            set_putchar_colour(LIGHT_GREY);
+            set_putchar_color(LIGHT_GREY);
             return;
         }
         void* vm2 = vmalloc(size, false);
         if (!vm2)
         {
-            set_putchar_colour(RED);
+            set_putchar_color(RED);
             printf("vmalloc: failed to allocate %z bytes\n", size);
-            set_putchar_colour(LIGHT_GREY);
+            set_putchar_color(LIGHT_GREY);
             return;
         }
         memset(vm, 'A', size);
         memset(vm2, 'A', size);
         if (memcmp(vm, vm2, size) != 0)
         {
-            set_putchar_colour(RED);
+            set_putchar_color(RED);
             printf("vmalloc: memory corruption detected!\n");
-            set_putchar_colour(LIGHT_GREY);
+            set_putchar_color(LIGHT_GREY);
             kernel_panic("vmalloc: memory corruption detected!\n");
         }
         if (i%10 == 0)
@@ -829,9 +829,9 @@ static void test_vmalloc()
     void* vm1 = vmalloc(size, true);
     if (!vm1)
     {
-        set_putchar_colour(RED);
+        set_putchar_color(RED);
         printf("vmalloc: failed to allocate %z bytes\n", size);
-        set_putchar_colour(LIGHT_GREY);
+        set_putchar_color(LIGHT_GREY);
         return;
     }
     printf("Allocated vm1: %p\n", vm1);

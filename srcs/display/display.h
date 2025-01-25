@@ -28,7 +28,7 @@
 #define LIGHT_BROWN     0x0E
 #define WHITE           0x0F
 
-void set_putchar_colour(uint8_t c);
+void set_putchar_color(uint8_t c);
 
 void putc(char c);
 void putc_color(char c, uint8_t color);
