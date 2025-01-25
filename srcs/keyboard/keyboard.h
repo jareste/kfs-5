@@ -1,6 +1,12 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
+#include "../utils/utils.h"
+
+#define QWERTY_ENG 0
+#define QWERTY_ES 1
+#define MAX_KEYBOARD 2
+
 void keyboard_handler();
 
 char get_last_char();
@@ -10,5 +16,8 @@ char* get_kb_buffer();
 void clear_kb_buffer();
 
 char* get_line();
+
+char get_ascii_char(uint8_t scancode, bool shifted);
+void set_keyboard_layout(uint8_t layout);
 
 #endif

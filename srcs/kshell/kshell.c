@@ -33,6 +33,7 @@ static void ks_kill();
 static void trigger_interrupt_software_0();
 static void trigger_interrupt_software_6();
 static void test_syscall();
+static void set_layout();
 
 static command_section_t command_sections[MAX_SECTIONS];
 
@@ -52,6 +53,7 @@ static command_t in_commands[] = {
     {"color", "Set shell color", color},
     {"uptime", "Get the system uptime in seconds.", kuptime},
     {"kill", "Kill a process", ks_kill},
+    {"layout", "Set keyboard layout", set_layout},
     {NULL, NULL, NULL}
 };
 
@@ -336,6 +338,26 @@ static bool check_global_cmd(char* cmd)
     return false;
 }
 
+static void set_layout()
+{
+    char* buffer;
+    uint32_t layout;
+
+    puts("Available layouts:\n");
+    puts("  0: QWERTY_ENG\n");
+    puts("  1: QWERTY_ES\n");
+    puts("Enter the layout: ");
+    buffer = get_line();
+    layout = (uint32_t)hex_string_to_int(buffer);
+    if (layout < 0 || layout >= 2)
+    {
+        puts("Invalid layout\n");
+        return;
+    }
+    printf("Layout: %d\n", layout);
+    set_keyboard_layout(layout);
+}
+
 static void trigger_interrupt_software_0()
 {
     asm volatile (
@@ -390,6 +412,7 @@ void kshell()
     command_t* commands;
     char* buffer;
 
+    set_keyboard_layout(QWERTY_ENG);
     while (1)
     {
         printf("jareste-OS> ");
