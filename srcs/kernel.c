@@ -4,6 +4,7 @@
 #include "kshell/kshell.h"
 #include "timers/timers.h"
 #include "memory/memory.h"
+#include "keyboard/signals.h"
 
 extern uint32_t endkernel;
 
@@ -21,7 +22,7 @@ void kernel_main()
     puts_color(BANNER, LIGHT_GREEN);
 
     enable_interrupts();
-    
+    init_signals();
     puts("Welcome to the kernel\n");
 
     heap_init();

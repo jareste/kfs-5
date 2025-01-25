@@ -5,6 +5,7 @@
 #include "idt.h"
 #include "../memory/memory.h"
 #include "keyboard.h"
+#include "signals.h"
 
 void enable_interrupts(void)
 {
@@ -16,6 +17,7 @@ void disable_interrupts(void)
 	__asm__ __volatile__("cli");
 }
 
+/* PAGE FAULT HANDLER */
 void page_fault_handler(registers* regs, error_state* stack)
 {
     uint32_t faulting_address;
@@ -39,8 +41,7 @@ void page_fault_handler(registers* regs, error_state* stack)
     debug_page_mapping(faulting_address);
 
     NEVER_HERE;
-}
-
+} /* PAGE FAULT HANDLER */
 
 void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {
@@ -50,12 +51,9 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(intr_no)
     disable_interrupts();
     printf("Interrupt SW number: %d\n", intr_no);
-    if (intr_no == 14) /* Page fault */
-        page_fault_handler(&reg, &stack);
-    else if (intr_no == 13) /* General protection fault */
-        page_fault_handler(&reg, &stack);
-    else /* unkown, better pause it */
-        kernel_panic("Unknown interrupt");
+    kill(0, intr_no);
+    handle_signals();
+
 	outb(PIC_EOI, PIC1_COMMAND);
 	enable_interrupts();
 }

@@ -1,5 +1,6 @@
 #include "../display/display.h"
 #include "../keyboard/keyboard.h"
+#include "../keyboard/signals.h"
 #include "../utils/utils.h"
 #include "../timers/timers.h"
 #include "kshell.h"
@@ -28,6 +29,9 @@ static void ksleep();
 static void kuptime();
 static void cmd_section();
 static void help_global();
+static void ks_kill();
+static void trigger_interrupt_software_0();
+static void trigger_interrupt_software_6();
 
 static command_section_t command_sections[MAX_SECTIONS];
 
@@ -46,6 +50,7 @@ static command_t in_commands[] = {
     {"exit", "Exit the shell", NULL},
     {"color", "Set shell color", colour},
     {"uptime", "Get the system uptime in seconds.", kuptime},
+    {"kill", "Kill a process", ks_kill},
     {NULL, NULL, NULL}
 };
 
@@ -57,10 +62,12 @@ static command_t dcommand[] = {
     {"reg", "Dumps Registers", dump_registers},
     {"panic", "Kernel Panic", kernel_panic},
     {"sleep", "Sleeps the kernel for 'n' seconds", ksleep},
+    {"raise0", "Raise a division by zero exception", trigger_interrupt_software_0},
+    {"raise6", "Raise an invalid opcode exception", trigger_interrupt_software_6},
     {NULL, NULL, NULL}
 };
 
-void install_command(command_t* cmds, const char* cmd, const char* desc, void (*func)())
+static void install_command(command_t* cmds, const char* cmd, const char* desc, void (*func)())
 {
     for (int i = 0; i < MAX_SECTIONS_COMMANDS; i++)
     {
@@ -86,7 +93,7 @@ void install_all_cmds(command_t* cmds, section_t section)
     }
 }
 
-void init_section(const char* name, section_t section)
+static void init_section(const char* name, section_t section)
 {
     command_sections[section].name = name;
     command_sections[section].section = section;
@@ -128,6 +135,25 @@ static void ksleep()
     printf("Sleeping for %d seconds...\n", seconds);
     sleep(seconds);
     printf("Woke up!\n");
+    clear_kb_buffer();
+}
+
+static void ks_kill()
+{
+    printf("Enter the PID to kill: ");
+    clear_kb_buffer();
+    while (getc() != 10);
+    char* buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    pid_t pid = (pid_t)hex_string_to_int(buffer);
+    printf("Enter the signal to send: ");
+    clear_kb_buffer();
+    while (getc() != 10);
+    buffer = get_kb_buffer();
+    buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+    int signal = (int)hex_string_to_int(buffer);
+    printf("Killing PID: %d with signal: %d\n", pid, signal);
+    kill(pid, signal);
     clear_kb_buffer();
 }
 
@@ -274,6 +300,11 @@ static void cmd_section()
     char* buffer = get_kb_buffer();
     buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
     uint32_t section = (uint32_t)hex_string_to_int(buffer);
+    if (section < 0 || section >= MAX_SECTIONS)
+    {
+        printf("Invalid section\n");
+        return;
+    }
     printf("Section: %s\n", command_sections[section].name);
     current_section = section;
     clear_kb_buffer();
@@ -300,7 +331,7 @@ static bool check_global_cmd(char* cmd)
     return false;
 }
 
-void trigger_interrupt_software_0()
+static void trigger_interrupt_software_0()
 {
     asm volatile (
         "mov $3, %eax\n"
@@ -309,7 +340,7 @@ void trigger_interrupt_software_0()
     );
 }
 
-void trigger_interrupt_software_6()
+static void trigger_interrupt_software_6()
 {    
     int j = 3;
     int i = 0;

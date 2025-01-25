@@ -50,6 +50,7 @@ void init_interrupts();
 void idt_set_gate(int idx, uint32_t base);
 void register_idt();
 
+void init_page_signals();
 
 extern void isr_handler_0();
 extern void isr_handler_1();
