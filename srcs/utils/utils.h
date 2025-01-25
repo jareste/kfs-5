@@ -45,6 +45,7 @@ extern void dump_registers();
 void *memcpy(void *dest, const void *src, size_t n);
 int memcmp(const void* s1, const void* s2, size_t n);
 
-#define ASSERT(x) if (!(x)) { kernel_panic("Assertion failed: " #x); }
+#define ASSERT(x)   if (!(x)) { kernel_panic("Assertion failed: " #x); }
+#define NEVER_HERE  kernel_panic("NEVER_HERE")
 
 #endif
