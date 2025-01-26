@@ -314,12 +314,6 @@ void kfree(void* ptr)
     block->free = 1;
 
     block_header_t* current = heap_started;
-    // block_header_t* prev = NULL;
-
-    printf("kfree: block: %p, size: %d\n", block, block->size);
-    printf("free_list: %p\n", free_list);
-    printf("current: %p\n", current->next);
-    printf("current: %p\n", current->next->next);
 
     while (current)
     {
@@ -689,30 +683,25 @@ static void test_kmalloc()
     void* vm1;
     void* vm2;
 
-    printf("Before kmalloc:\n");
-    show_kernel_allocations();
-    dump_page_directory();
-
     for (i = 0; i < 500; i++)
     {
         size = KB(1);
-        puts_color("Allocating vm\n", GREEN);
+
         vm = kmalloc(size);
-        puts_color("Allocated vm\n", GREEN);
         if (!vm)
         {
             set_putchar_color(RED);
-            printf("vmalloc: failed to allocate %z bytes\n", size);
+            printf("kmalloc: failed to allocate %z bytes\n", size);
             set_putchar_color(LIGHT_GREY);
             return;
         }
         memset(vm, 'A', size);
         vm2 = kmalloc(size);
-        puts_color("Allocated vm2\n", GREEN);
+
         if (!vm2)
         {
             set_putchar_color(RED);
-            printf("vmalloc: failed to allocate %z bytes\n", size);
+            printf("kmalloc: failed to allocate %z bytes\n", size);
             set_putchar_color(LIGHT_GREY);
             return;
         }
@@ -720,13 +709,13 @@ static void test_kmalloc()
         if (memcmp(vm, vm2, size) != 0)
         {
             set_putchar_color(RED);
-            printf("vmalloc: memory corruption detected!\n");
+            printf("kmalloc: memory corruption detected!\n");
             set_putchar_color(LIGHT_GREY);
-            kernel_panic("vmalloc: memory corruption detected!\n");
+            kernel_panic("kmalloc: memory corruption detected!\n");
         }
         if (i%10 == 0)
         {
-            puts_color(" 10 x Memory test passed\n", GREEN);
+            puts_color(" 10 x KMemory test passed\n", GREEN);
         }
 
         kfree(vm);
@@ -734,23 +723,28 @@ static void test_kmalloc()
     }
 
     size = KB(3);
-    // printf("Allocating %z bytes with kmalloc\n", size);
+
     vm1 = kmalloc(size);
     if (!vm1)
     {
         set_putchar_color(RED);
-        printf("vmalloc: failed to allocate %z bytes\n", size);
+        printf("kmalloc: failed to allocate %z bytes\n", size);
         set_putchar_color(LIGHT_GREY);
         return;
     }
-    // printf("Allocated vm1: %p\n", vm1);
-    // printf("Size of vm1: %z\n", ksize(vm1));
-    // printf("Size of vm1: %z\n", size);
+
     memset(vm1, 'A', size);
+    for (i = 0; i < size; i++)
+    {
+        if (((char*)vm1)[i] != 'A')
+        {
+            set_putchar_color(RED);
+            printf("kmalloc: memory corruption detected!\n");
+            set_putchar_color(LIGHT_GREY);
+            kernel_panic("kmalloc: memory corruption detected!\n");
+        }
+    }
     kfree(vm1);
-    printf("After kmalloc:\n");
-    show_kernel_allocations();
-    dump_page_directory();
 }
 
 static void test_vmalloc()
@@ -760,10 +754,6 @@ static void test_vmalloc()
     void* vm1;
     void* vm2;
     int i;
-
-    printf("Before vmalloc:\n");
-    show_user_allocations();
-    dump_page_directory();
 
     for (i = 0; i < 500; i++)
     {
@@ -795,17 +785,13 @@ static void test_vmalloc()
         }
         if (i%10 == 0)
         {
-            puts_color(" 10 x Memory test passed\n", GREEN);
-            // printf("Allocated vm: %p\n", vm);
+            puts_color(" 10 x VMemory test passed\n", GREEN);
         }
-        printf("Allocated vm: %p\n", vm);
-        printf("Allocated vm2: %p\n", vm2);
         vfree(vm);
         vfree(vm2);
     }
 
     size = KB(2);
-    // printf("Allocating %z bytes with vmalloc\n", size);
     vm1 = vmalloc(size, true);
     if (!vm1)
     {
@@ -814,14 +800,20 @@ static void test_vmalloc()
         set_putchar_color(LIGHT_GREY);
         return;
     }
-    // printf("Allocated vm1: %p\n", vm1);
-    // printf("Size of vm1: %z\n", vsize(vm1));
-    // printf("Size of vm1: %z\n", size);
+
     memset(vm1, 'A', size);
+    for (i = 0; i < size; i++)
+    {
+        if (((char*)vm1)[i] != 'A')
+        {
+            set_putchar_color(RED);
+            printf("vmalloc: memory corruption detected!\n");
+            set_putchar_color(LIGHT_GREY);
+            kernel_panic("vmalloc: memory corruption detected!\n");
+        }
+    }
+    
     vfree(vm1);
-    printf("After vmalloc:\n");
-    show_user_allocations();
-    dump_page_directory();
 }
 
 static void show_kernel_allocations()
