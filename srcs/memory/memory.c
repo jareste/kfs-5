@@ -18,19 +18,12 @@ extern uint32_t endkernel;
 #define HEAP_SIZE_  0x100000  /* 1 MB heap size */
 #define ALIGN_4K(x)  (((x) + 0xFFF) & ~0xFFF) /* 4 KB alignment */
 #define ALIGN_8(x) (((x) + 0x7) & ~0x7) /* 8-byte alignment */
-#define MAX_HEAP_SIZE (20 * 1024 * 1024) /* Allow up to 64MB */
+#define MAX_HEAP_SIZE (4 * 1024 * 1024) /* Allow up to 64MB */
 
 #define PAGE_PRESENT  0x1
 #define PAGE_RW       0x2
 #define PAGE_USER     0x4
 
-/**
- * A simplistic “vmalloc region” from 0xC1000000 up to 0xC2000000
- * (16 MB) just as an example. Make sure it doesn't overlap your main
- * kernel heap or PDE[0] identity region.
- */
-#define VMALLOC_START 0xC1000000
-#define VMALLOC_END   0xC3000000  // 64 MB
 
 #define KERNEL_PDE_FLAGS  (PAGE_PRESENT | PAGE_RW)
 #define KERNEL_PTE_FLAGS  (PAGE_PRESENT | PAGE_RW)
@@ -44,11 +37,11 @@ typedef struct block_header {
     int free;                  /* Is this block free? (1 for yes, 0 for no) */
 } block_header_t;
 
-/* Same than the upper one but for vmalloc */
 typedef struct vblock_header {
-    size_t size;
-    struct vblock_header* next;
-    int free;
+    size_t size;               /* Size of the block (excluding header) */
+    struct vblock_header* next; /* Pointer to the next free block */
+    int free;                  /* Is this block free? (1 for yes, 0 for no) */
+    int is_user;               /* Is this block for user space? (1 for yes, 0 for no) */
 } vblock_header_t;
 
 typedef uint32_t page_directory_t[PAGE_DIRECTORY_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -85,7 +78,6 @@ static void* heap_end;
 static size_t HEAP_SIZE;
 
 static vblock_header_t* vblock_list = NULL;
-static uintptr_t vheap_end = VMALLOC_START;
 
 static command_t commands[] = {
     {"f pfw", "Force a page fault by writing to an unmapped address", m_force_page_fault_write},
@@ -118,7 +110,7 @@ void paging_init()
      * Each PDE covers 4 MB, so we need up to PDE index = 15 to cover 64 MB.
      */
 
-    const uint32_t IDENTITY_LIMIT = MB(64);// * 1024 * 1024; // 64 MB
+    const uint32_t IDENTITY_LIMIT = MB(16);// * 1024 * 1024; // 64 MB
     for (uintptr_t addr = 0; addr < IDENTITY_LIMIT; addr += 0x1000)
     {
         uint32_t pd_index = addr >> 22;        
@@ -371,134 +363,53 @@ size_t ksize(void* ptr)
 /*                           VMALLOC                                          */
 /*                                                                            */
 /*############################################################################*/
-static void map_new_page(uintptr_t vaddr, bool is_user)
-{
-    uint32_t pde_flags = (PAGE_PRESENT | PAGE_RW);
-    uint32_t pte_flags = (PAGE_PRESENT | PAGE_RW);
-
-    if (is_user)
-    {
-        pde_flags |= PAGE_USER;
-        pte_flags |= PAGE_USER;
-    }
-
-    uint32_t pd_index = vaddr >> 22;
-    uint32_t pt_index = (vaddr >> 12) & 0x3FF;
-
-    if (!(page_directory[pd_index] & PAGE_PRESENT))
-    {
-        uint32_t pt_phys = allocate_frame();
-        if (!pt_phys) kernel_panic("Out of frames for PDE!\n");
-
-        memset((void*)pt_phys, 0, PAGE_SIZE);
-        page_directory[pd_index] = (pt_phys & ~0xFFF) | pde_flags;
-    }
-
-    page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-    uint32_t frame_phys = allocate_frame();
-    if (!frame_phys) kernel_panic("Out of frames for PTE!\n");
-
-    memset((void*)frame_phys, 0, PAGE_SIZE);
-
-    (*pt)[pt_index] = (frame_phys & ~0xFFF) | pte_flags;
-    asm volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
-}
-
-static void unmap_page(uintptr_t vaddr)
-{
-    uint32_t pd_index = vaddr >> 22;
-    uint32_t pt_index = (vaddr >> 12) & 0x3FF;
-
-    /* PDE exists? */
-    if (page_directory[pd_index] & PAGE_PRESENT)
-    {
-        page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-        if ((*pt)[pt_index] & PAGE_PRESENT)
-        {
-            /* Free the frame */
-            uint32_t phys = (*pt)[pt_index] & ~0xFFF;
-            free_frame(phys);
-
-            /* Clear PTE */
-            (*pt)[pt_index] = 0;
-            asm volatile("invlpg (%0)" : : "r"(vaddr) : "memory");
-        }
-    }
-    /* TODO: Free the page if it's not used at all. */
-}
-
-void* vbrk(void* addr, bool is_user)
-{
-    uintptr_t new_end = (uintptr_t)addr;
-    if (new_end < VMALLOC_START || new_end > VMALLOC_END)
-    {
-        puts_color("vbrk: out of vmalloc region!\n", RED);
-        return (void*)-1;
-    }
-
-    if (new_end > vheap_end)
-    {
-        for (uintptr_t p = vheap_end; p < new_end; p += PAGE_SIZE)
-        {
-            map_new_page(p, is_user);
-        }
-    }
-    else if (new_end < vheap_end)
-    {
-        for (uintptr_t p = new_end; p < vheap_end; p += PAGE_SIZE)
-        {
-            unmap_page(p);
-        }
-    }
-
-    vheap_end = new_end;
-    return (void*)vheap_end;
-}
-
-void* vmalloc(size_t size, bool is_user)
+void* vmalloc(size_t size, int is_user)
 {
     size = ALIGN_8(size);
-    size_t total_size = size + sizeof(vblock_header_t);
 
+    vblock_header_t* current = vblock_list;
     vblock_header_t* prev = NULL;
-    vblock_header_t* block = vblock_list;
 
-    while (block)
+    while (current)
     {
-        if (block->free && block->size >= size)
+        if (current->free && current->size >= size)
         {
-            block->free = 0;
+            current->free = 0;
+            current->is_user = is_user;
 
-            if (block->size > total_size + sizeof(vblock_header_t))
+            if (current->size > size + sizeof(vblock_header_t))
             {
-                vblock_header_t* new_block = (vblock_header_t*)((char*)block + sizeof(vblock_header_t) + size);
-                new_block->size = block->size - total_size;
+                vblock_header_t* new_block = (vblock_header_t*)ALIGN_8((uintptr_t)current + sizeof(vblock_header_t) + size);
+                new_block->size = current->size - size - sizeof(vblock_header_t);
                 new_block->free = 1;
-                new_block->next = block->next;
+                new_block->next = current->next;
+                new_block->is_user = is_user;
 
-                block->size = size;
-                block->next = new_block;
+                current->size = size;
+                current->next = new_block;
             }
 
-            return (void*)((char*)block + sizeof(vblock_header_t));
+            void* allocated_mem = (char*)current + sizeof(vblock_header_t);
+            return allocated_mem;
         }
 
-        prev = block;
-        block = block->next;
+        prev = current;
+        current = current->next;
     }
 
-    uintptr_t old_end = vheap_end;
-    uintptr_t new_end = old_end + total_size;
+    uintptr_t old_end = (uintptr_t)heap_end;
+    size_t new_size = size + sizeof(vblock_header_t);
+    uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
 
-    if (new_end + MB(1) > VMALLOC_END)
+    if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
     {
-        puts_color("vmalloc: out of range!\n", RED);
+        puts_color("vmalloc: Out of memory (heap expansion)!\n", RED);
         return NULL;
     }
 
-    if (vbrk((void*)new_end, is_user) == (void*)-1)
+    if (kbrk((void*)new_heap_end) == (void*)-1)
     {
-        puts_color("vmalloc: vbrk failed\n", RED);
+        puts_color("vmalloc: Failed to expand heap!\n", RED);
         return NULL;
     }
 
@@ -506,13 +417,19 @@ void* vmalloc(size_t size, bool is_user)
     new_block->size = size;
     new_block->free = 0;
     new_block->next = NULL;
+    new_block->is_user = is_user;
 
     if (prev)
+    {
         prev->next = new_block;
+    }
     else
+    {
         vblock_list = new_block;
+    }
 
-    return (void*)((char*)new_block + sizeof(vblock_header_t));
+    void* allocated_mem = (char*)new_block + sizeof(vblock_header_t);
+    return allocated_mem;
 }
 
 void vfree(void* ptr)
@@ -523,6 +440,8 @@ void vfree(void* ptr)
     block->free = 1;
 
     vblock_header_t* current = vblock_list;
+    vblock_header_t* prev = NULL;
+
     while (current)
     {
         if (current->free && current->next && current->next->free)
@@ -530,6 +449,8 @@ void vfree(void* ptr)
             current->size += sizeof(vblock_header_t) + current->next->size;
             current->next = current->next->next;
         }
+
+        prev = current;
         current = current->next;
     }
 }
@@ -537,6 +458,7 @@ void vfree(void* ptr)
 size_t vsize(void* ptr)
 {
     if (!ptr) return 0;
+
     vblock_header_t* block = (vblock_header_t*)((char*)ptr - sizeof(vblock_header_t));
     return block->size;
 }
@@ -679,7 +601,7 @@ static void test_dynamic_heap_growth()
 
     kfree(block1);
 
-    size = MB(10);
+    size = KB(3);
     large_block = kmalloc(size);
     if (large_block)
     {
@@ -773,7 +695,7 @@ static void test_kmalloc()
 
     for (i = 0; i < 500; i++)
     {
-        size = MB(1);
+        size = KB(1);
         puts_color("Allocating vm\n", GREEN);
         vm = kmalloc(size);
         puts_color("Allocated vm\n", GREEN);
@@ -811,7 +733,7 @@ static void test_kmalloc()
         kfree(vm2);
     }
 
-    size = MB(10);
+    size = KB(3);
     // printf("Allocating %z bytes with kmalloc\n", size);
     vm1 = kmalloc(size);
     if (!vm1)
@@ -845,7 +767,7 @@ static void test_vmalloc()
 
     for (i = 0; i < 500; i++)
     {
-        size = MB(1);
+        size = KB(1);
         vm = vmalloc(size, false);
         if (!vm)
         {
@@ -876,11 +798,13 @@ static void test_vmalloc()
             puts_color(" 10 x Memory test passed\n", GREEN);
             // printf("Allocated vm: %p\n", vm);
         }
+        printf("Allocated vm: %p\n", vm);
+        printf("Allocated vm2: %p\n", vm2);
         vfree(vm);
         vfree(vm2);
     }
 
-    size = MB(12);
+    size = KB(2);
     // printf("Allocating %z bytes with vmalloc\n", size);
     vm1 = vmalloc(size, true);
     if (!vm1)
