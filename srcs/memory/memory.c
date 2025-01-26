@@ -110,7 +110,7 @@ void paging_init()
      * Each PDE covers 4 MB, so we need up to PDE index = 15 to cover 64 MB.
      */
 
-    const uint32_t IDENTITY_LIMIT = MB(16);// * 1024 * 1024; // 64 MB
+    const uint32_t IDENTITY_LIMIT = MB(64);// * 1024 * 1024; // 64 MB
     for (uintptr_t addr = 0; addr < IDENTITY_LIMIT; addr += 0x1000)
     {
         uint32_t pd_index = addr >> 22;        
@@ -837,5 +837,26 @@ static void show_user_allocations()
         printf("  Block at %p: size=%z, free=%d\n",
                 (void*)current, current->size, current->free);
         current = current->next;
+    }
+}
+
+#include "../tasks/task.h"
+void debug_task_stack(task_t *task)
+{
+    uint32_t pd_index = (uintptr_t)task->stack >> 22;
+    uint32_t pt_index = ((uintptr_t)task->stack >> 12) & 0x3FF;
+
+    printf("Debugging task stack for PID %d:\n", task->pid);
+    printf("  Stack Base: %x\n", (uint32_t)task->stack);
+    printf("  Page Directory Entry: %x\n", page_directory[pd_index]);
+
+    if (page_directory[pd_index] & PAGE_PRESENT)
+    {
+        page_table_t* table = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
+        printf("  Page Table Entry: %x\n", (*table)[pt_index]);
+    }
+    else
+    {
+        printf("  PDE not present!\n");
     }
 }

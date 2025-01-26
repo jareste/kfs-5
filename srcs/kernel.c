@@ -5,6 +5,7 @@
 #include "timers/timers.h"
 #include "memory/memory.h"
 #include "keyboard/signals.h"
+#include "tasks/task.h"
 
 extern uint32_t endkernel;
 
@@ -13,18 +14,18 @@ void kernel_main()
     clear_screen();
     init_kshell();
 
-    gdt_init();
-
-    init_interrupts();
-
     paging_init();
+    init_interrupts();
+    heap_init();
+    gdt_init();
 
     init_timer();
 
     init_signals();
-    enable_interrupts();
 
-    heap_init();
+
+    init_tasks();
+    enable_interrupts();
 
     kshell();
     printf("Exiting shell...\n");

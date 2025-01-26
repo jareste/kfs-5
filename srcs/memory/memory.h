@@ -22,5 +22,8 @@ void heap_init();
 void dump_page_directory();
 void debug_page_mapping(uint32_t address);
 
+void* vmalloc(size_t size, int is_user);
+void vfree(void* ptr);
+size_t vsize(void* ptr);
 
 #endif // MEMORY_H

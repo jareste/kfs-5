@@ -3,8 +3,6 @@
 #include "../display/display.h"
 #include "idt.h"
 
-#define MAX_SIGNALS 32
-
 /* TODO move it to each task as now we only have the 'core' */
 signal_context_t kernel_signals;
 

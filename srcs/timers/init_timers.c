@@ -64,7 +64,5 @@ void init_pit(uint32_t frequency)
 
 void init_timer()
 {
-    disable_interrupts();
     init_pit(PIT_FREQUENCY);
-    enable_interrupts();
 }

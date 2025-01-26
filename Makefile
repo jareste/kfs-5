@@ -21,17 +21,17 @@ vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard $(S
 			$(SRC_DIR)/idt $(SRC_DIR)/kshell $(SRC_DIR)/io $(SRC_DIR)/timers $(SRC_DIR)/memory \
 			$(SRC_DIR)/syscalls $(SRC_DIR)/tasks
 
-vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard $(SRC_DIR)/gdt $(SRC_DIR)/utils
+vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard $(SRC_DIR)/gdt $(SRC_DIR)/utils $(SRC_DIR)/tasks
 
 C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			idt.c itoa.c gdt.c put_hex.c kdump.c kshell.c memset.c strtol.c \
 			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c \
 			io.c init_timers.c memory.c put_zu.c pmm.c memcpy.c memcmp.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
-			task.c
+			task.c scheduler.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
-			  clear_registers.asm
+			  clear_registers.asm tasks.asm
 
 SRC = $(C_SOURCES) $(ASM_SOURCES)
 

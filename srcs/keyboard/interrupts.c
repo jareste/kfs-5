@@ -7,6 +7,7 @@
 #include "keyboard.h"
 #include "signals.h"
 #include "../syscalls/syscalls.h"
+#include "../tasks/task.h"
 
 void enable_interrupts(void)
 {
@@ -39,7 +40,7 @@ void page_fault_handler(registers* regs, error_state* stack)
     else printf("Kernel-mode\n");
 
 
-    debug_page_mapping(faulting_address);
+    // debug_page_mapping(faulting_address);
     while(1);
 
     NEVER_HERE;
@@ -54,7 +55,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
 
     printf("Interrupt SW number: %d\n", intr_no);
 
-    if (intr_no == 14)
+    if (intr_no == 14 || intr_no == 13)
     {
         page_fault_handler(&reg, &stack);
     }
@@ -62,7 +63,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     kill(0, intr_no);
     handle_signals();
     
-    while(1);
+    // while(1);
     if (intr_no >= 32)
     {
         outb(PIC_EOI, PIC1_COMMAND);
@@ -75,6 +76,16 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
 	(void) err_code;
     (void) stack;
     (void) reg;
+
+    static int timer_ticks = 0;
+    timer_ticks++;
+
+    if (timer_ticks % 200 == 0)
+    {
+        timer_ticks = 0;
+        // printf("Switching tasks\n");
+        schedule();
+    }
 
     switch (intr_no)
     {
