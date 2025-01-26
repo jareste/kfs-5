@@ -5,13 +5,6 @@
 
 #define MAX_SIGNALS 32
 
-typedef struct
-{
-    signal_handler_t handlers[MAX_SIGNALS]; /* Handler for each signal, signal() would set it. */
-    uint32_t pending_signals; /* 'flag' of pending signals */
-    uint32_t blocked_signals; /* 'flag' of blocked signals */
-} signal_context_t;
-
 /* TODO move it to each task as now we only have the 'core' */
 signal_context_t kernel_signals;
 

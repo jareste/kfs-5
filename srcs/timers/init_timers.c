@@ -24,6 +24,7 @@ void sleep(uint32_t seconds)
     }
 }
 
+/* On each tick i can just switch task so it's easy(?) */
 void irq_handler_timer()
 {
     tick_count++;

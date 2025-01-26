@@ -21,8 +21,8 @@ void kernel_main()
 
     init_timer();
 
-    enable_interrupts();
     init_signals();
+    enable_interrupts();
 
     heap_init();
 
