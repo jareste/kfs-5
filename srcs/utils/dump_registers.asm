@@ -27,3 +27,5 @@ dump_registers:
     pop ds
     popa
     ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits

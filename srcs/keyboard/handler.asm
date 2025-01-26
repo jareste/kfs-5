@@ -120,3 +120,5 @@ no_error_code_irq_handler 12, 44
 no_error_code_irq_handler 13, 45
 no_error_code_irq_handler 14, 46
 no_error_code_irq_handler 15, 47
+
+section .note.GNU-stack noalloc noexec nowrite progbits

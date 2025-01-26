@@ -1,7 +1,8 @@
 NAME = jareste_kfs.iso
 RELEASE_NAME = jareste_kfs_release.iso
 
-BIN_NAME = ./iso/boot/kernel.bin
+BIN_NAME = kernel.bin
+BIN_PATH = ./iso/boot/kernel.bin
 
 CC = gcc
 AS = nasm
@@ -37,7 +38,7 @@ OBJ = $(addprefix $(OBJ_DIR)/, $(C_SOURCES:.c=.o) $(ASM_SOURCES:.asm=.o))
 
 DEP = $(addsuffix .d, $(basename $(OBJ)))
 
-all: $(NAME)
+all: $(BIN_NAME)
 
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(@D)
@@ -47,12 +48,15 @@ $(OBJ_DIR)/%.o: %.asm
 	@mkdir -p $(@D)
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(NAME): $(OBJ) $(LINKER_DIR)/link.ld
+$(BIN_NAME): $(OBJ) $(LINKER_DIR)/link.ld
 	@mkdir -p $(GRUB_DIR)
 	ld $(LDFLAGS) -T $(LINKER_DIR)/link.ld -o kernel.bin $(OBJ)
+
+build_iso: $(BIN_NAME)
 	cp kernel.bin $(ISO_DIR)/boot/
 	cp srcs/boot/grub.cfg $(GRUB_DIR)/.
-	grub-mkrescue -o $(NAME) $(ISO_DIR)/
+	grub-mkrescue -o $(BIN_PATH) $(ISO_DIR)/
+
 
 release: $(OBJ) $(LINKER_DIR)/link.ld
 	@mkdir -p $(GRUB_DIR)
@@ -76,7 +80,7 @@ re: fclean all
 run:
 	qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
 
-run_grub:
+run_grub: build_iso
 	qemu-system-i386 -cdrom $(NAME)
 
 run_release: release
@@ -88,6 +92,6 @@ debug:
 xorriso:
 	xorriso -indev $(NAME) -ls /boot/grub/
 
-.PHONY: all clean fclean re run xorriso release run_release
+.PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso
 
 -include $(DEP)

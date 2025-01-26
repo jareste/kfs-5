@@ -16,14 +16,13 @@ void kernel_main()
     gdt_init();
 
     init_interrupts();
-    paging_init();
-    init_timer();
 
-    puts_color(BANNER, LIGHT_GREEN);
+    paging_init();
+
+    init_timer();
 
     enable_interrupts();
     init_signals();
-    puts("Welcome to the kernel\n");
 
     heap_init();
 

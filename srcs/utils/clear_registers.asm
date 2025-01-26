@@ -16,3 +16,5 @@ clear_segment_registers:
     mov fs, ax
     mov gs, ax
     ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits

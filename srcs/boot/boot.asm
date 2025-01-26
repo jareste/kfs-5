@@ -2,11 +2,12 @@ BITS 32
 
 section .multiboot
 align 4
-dd 0x1BADB002              ; Multiboot magic number
-dd 0                       ; Flags (set to 0 for now)
-dd -(0x1BADB002 + 0)       ; Checksum (magic + flags + checksum = 0)
+    dd 0x1BADB002   ; Multiboot magic number
+    dd 0x00000003   ; Flags: align modules on page boundaries and provide memory map
+    dd -(0x1BADB002 + 0x00000003) ; Checksum
 
 section .text
+global start
 start:
     cli                     ; Disable interrupts
     mov esp, 0x90000        ; Set up stack

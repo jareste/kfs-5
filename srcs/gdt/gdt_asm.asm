@@ -14,3 +14,5 @@ gdt_flush:
 
 reload_cs:
     ret                 ; Return to kernel_main
+
+section .note.GNU-stack noalloc noexec nowrite progbits
