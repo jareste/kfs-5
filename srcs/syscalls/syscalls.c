@@ -40,8 +40,30 @@ int sys_write(int fd, const char* buf, size_t count)
 
 int sys_read(int fd, char* buf, size_t count)
 {
-    printf("Syscall: read(%d, %p, %d)\n", fd, buf, count);
-    return 0;
+    if (!buf || count == 0)
+    {
+        printf("Invalid buffer or count\n");
+        return -1;
+    }
+
+    const char* data = "123456789";
+    size_t data_len = strlen(data);
+
+    if (count > data_len)
+    {
+        count = data_len;
+    }
+
+    memcpy(buf, data, count);
+
+    printf("Syscall: read(%d, %p, %d) - Filled buffer with: '", fd, buf, count);
+    for (size_t i = 0; i < count; i++)
+    {
+        putc(buf[i]);
+    }
+    puts("'\n");
+
+    return count;
 }
 
 int sys_open(const char* path, int flags)

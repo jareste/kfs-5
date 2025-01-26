@@ -374,10 +374,43 @@ static void trigger_interrupt_software_6()
     printf("Kernel end: %d\n", j / i);
 }
 
+void test_syscall_read()
+{
+    int return_value;
+    char buffer[10];
+
+    memset(buffer, 0, sizeof(buffer));
+    puts_color("TEST_READ\n", LIGHT_MAGENTA);
+    printf("Buffer before sys_read: %s\n", buffer);
+
+    asm volatile (
+        "mov $2, %%eax\n"
+        "mov $0, %%ebx\n"
+        "mov %1, %%ecx\n"
+        "mov %2, %%edx\n"
+        "int $0x80\n"
+        "mov %%eax, %0\n"
+        : "=r"(return_value)
+        : "r"(buffer), "r"(sizeof(buffer))
+        : "eax", "ebx", "ecx", "edx"
+    );
+
+    printf("Buffer after sys_read: '");
+    for (size_t i = 0; i < 10; i++)
+    {
+        if (buffer[i] == 0)
+            break;
+        putc(buffer[i]);
+    }
+    puts("'\n");
+    printf("SYS_READ return value: %d\n", return_value);
+}
+
 void test_syscall()
 {
     int return_value;
-
+    puts_color("TEST_EXIT\n", LIGHT_MAGENTA);
+    
     asm volatile (
         "mov $0, %%eax\n"
         "mov $42, %%ebx\n"
@@ -392,6 +425,7 @@ void test_syscall()
     const char* msg = "Hello, world!\n";
     size_t msg_len = strlen(msg);
 
+    puts_color("TEST_WRITE\n", LIGHT_MAGENTA);
     asm volatile (
         "mov $1, %%eax\n"
         "mov $1, %%ebx\n"
@@ -404,6 +438,8 @@ void test_syscall()
         : "eax", "ebx", "ecx", "edx"
     );
     printf("SYS_WRITE return value: %d\n", return_value);
+    
+    test_syscall_read();
 }
 
 void kshell()

@@ -7,7 +7,6 @@ align 4
     dd -(0x1BADB002 + 0x00000003) ; Checksum
 
 section .text
-global start
 start:
     cli                     ; Disable interrupts
     mov esp, 0x90000        ; Set up stack
