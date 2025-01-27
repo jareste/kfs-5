@@ -80,17 +80,17 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     // static int timer_ticks = 0;
     // timer_ticks++;
 
-    disable_interrupts();
     // if (timer_ticks % 200 == 0)
     // {
     //     timer_ticks = 0;
     //     // printf("Switching tasks\n");
     // }
-        scheduler();
 
     switch (intr_no)
     {
         case 0:
+            scheduler();
+            disable_interrupts();
             irq_handler_timer();
             break;
         case 1:

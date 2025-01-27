@@ -73,5 +73,6 @@ typedef struct __attribute__((packed)) {
 } gdt_ptr_t;
 
 void gdt_init();
+void tss_set_stack(uint32_t stack);
 
 #endif

@@ -64,6 +64,11 @@ void tss_init()
     load_tss();
 }
 
+void tss_set_stack(uint32_t stack)
+{
+    tss.esp0 = stack;
+}
+
 /* Assembly function to load the GDT */
 extern void gdt_flush();
 
