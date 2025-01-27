@@ -41,9 +41,9 @@ void scheduler(void)
         // enable_interrupts();
     	// outb(0x20, 0x20);
 
-        switch_context(prev, next);
-        while(1);
         current_task = next;
+        switch_context(prev, next);
+        // while(1);
         puts("Switched\n");
     // }
     // printf("Task fault\n");
@@ -123,15 +123,25 @@ void task_1(void)
     {
         i++;
         puts_color("Task 1\n", i %128);
+        if (i % 1000 == 0)
+        {
+            scheduler();
+        }
     }
 }
 
 void task_2(void)
 {
     puts("Task 2 Started\n");
+    int i = 0;
     while (1)
     {
+        i++;
         puts("Task 2\n");
+        if (i % 1000 == 0)
+        {
+            scheduler();
+        }
     }
 }
 
