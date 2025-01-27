@@ -1,155 +1,109 @@
 #include "task.h"
-#include "../display/display.h"
 #include "../memory/memory.h"
+#include "../utils/utils.h"
+#include "../utils/stdint.h"
+#include "../display/display.h"
+#include "../keyboard/signals.h"
 
-#define MAX_TASKS 2
 #define STACK_SIZE 4096
 
-// uint8_t task1_stack[STACK_SIZE];
-// uint8_t task2_stack[STACK_SIZE];
+task_t *current_task = NULL;
+task_t *task_list = NULL;
+pid_t task_index = 0;
 
-task_t tasks[2];
+void kernel_main();
 
-task_t *current_task = &tasks[0];
-task_t *task_list[] = {&tasks[0], &tasks[1]};
-int current_task_index = 0;
+extern void switch_context(task_t *prev, task_t *next);
 
-typedef enum
+void scheduler(void)
 {
-    READY,
-    RUNNING,
-    BLOCKED,
-    TERMINATED
-} task_state;
-
-extern void save_cpu_state(CPUState *state);
-extern void restore_cpu_state(CPUState *state);
-
-void print_task(task_t *task)
-{
-    printf("Task %d:\n", task->pid);
-    printf("  EIP: %p\n", task->state.eip);
-    printf("  ESP: %x\n", task->state.esp);
-    printf("  EFLAGS: %x\n", task->state.eflags);
-    printf("  Stack: %p\n", task->stack);
-}
-
-
-void switch_to_task(task_t *next_task) {
-    disable_interrupts();
-    save_cpu_state(&current_task->state);
-    printf("Switching to task %d\n", next_task->pid);
-    restore_cpu_state(&next_task->state);
-    current_task = next_task;
-    enable_interrupts();
-}
-
-void test_context_switch()
-{
-    printf("Testing context switch...\n");
-    print_task(&tasks[0]);
-    // save_cpu_state(&tasks[0]); // Save state of task 0
-    save_cpu_state(&tasks[0].state);
-    printf("Saved task0...\n");
-    print_task(&tasks[0]);
-    restore_cpu_state(&tasks[1].state); // Restore state of task 1
-    // load_state(&tasks[0]); // Immediately restore state of task 0
-    printf("Restored task0...\n");
-}
-
-
-void schedule()
-{
-    // current_task_index = (current_task_index + 1) % MAX_TASKS;
-    current_task_index++;
-    if (current_task_index >= MAX_TASKS)
+    if (!current_task) return;
+    
+    task_t *next = current_task->next;
+    if (!next || next->state != TASK_READY)
     {
-        current_task_index = 0;
+        next = task_list;
     }
-    printf("Scheduling... %d\n", current_task_index);
-    task_t *next_task = task_list[current_task_index];
-    disable_interrupts();
-    switch_to_task(next_task);
-    // test_context_switch();
-    enable_interrupts();
-
-    // switch_to_task(task_list[current_task_index]);
-    current_task = next_task;
-}
-
-// void init_task(task_t *task, void (*entry)(), uint8_t *stack, int pid)
-// {
-//     task->pid = pid;
-//     task->state = READY;
-//     task->stack = stack + STACK_SIZE - 16;
-//     task->eip = (uint32_t)entry;
-//     task->esp = (uint32_t)(stack + STACK_SIZE - 16);
-//     task->eflags = 0x202;
-//     // printf("Offset of edi: %z\n", offsetof(task_t, edi));
-//     // printf("Offset of eip: %z\n", offsetof(task_t, eip));
-//     print_task(task);
-// }
-
-void init_task(task_t *task, void (*entry)(), size_t stack_size, int pid)
-{
-    task->pid = pid;
-    task->alive_status = READY;
-
-    uint8_t *stack = (uint8_t *)vmalloc(stack_size, false);
-    if (!stack)
+    printf("Switching task %d -> %d\n", current_task->pid, next->pid);
+    printf("ESP: %p -> %p\n", current_task->cpu.esp_, next->cpu.esp_);
+    printf("EIP: %p -> %p\n", current_task->cpu.eip, next->cpu.eip);
+    printf("current: %p -> %p\n", current_task, next);
+    
+    if (next != current_task)
     {
-        printf("Error: Failed to allocate stack for task %d\n", pid);
-        return;
+        task_t *prev = current_task;
+        current_task = next;
+        switch_context(prev, current_task);
+        puts("Switched\n");
+        while(1);
     }
-
-    uint32_t *stack_ptr = (uint32_t *)(stack + stack_size);
-    stack_ptr = (uint32_t *)((uint32_t)stack_ptr & ~0xF);
-
-    task->stack = (void *)stack;
-    task->state.esp = (uint32_t)stack_ptr;
-    task->state.eip = (uint32_t)entry;
-    task->state.eflags = 0x202;
-
-    task->state.edi = 0;
-    task->state.esi = 0;
-    task->state.ebp = 0;
-    task->state.ebx = 0;
-    task->state.edx = 0;
-    task->state.ecx = 0;
-    task->state.eax = 0;
-
-    printf("Initialized task %d:\n", pid);
-    printf("  Entry: %p\n", entry);
-    printf("  ESP: %x\n", task->state.esp);
-    printf("  EIP: %x\n", task->state.eip);
 }
 
-
-const char* debug_msg = "Debug message";
-void print_debug(const char *message, uint32_t value)
+void create_task(void (*entry)(void))
 {
-    printf("%s: %p\n", message, value);
+    task_t *task = kmalloc(sizeof(task_t));
+    uint32_t *stack = kmalloc(STACK_SIZE);
+
+    stack = (uint32_t*)((uint32_t)stack & 0xFFFFFFF0);
+    stack += STACK_SIZE / sizeof(uint32_t);
+
+    *--stack = (uint32_t) entry;
+
+    task->cpu.esp_ = (uint32_t) stack;
+    task->cpu.eip = (uint32_t) entry;
+    task->cpu.eflags = 0x202;
+    // task->ebx = 0;
+    // task->ecx = 0;
+    // task->edx = 0;
+    // task->esi = 0;
+    // task->edi = 0;
+    // task->ebp = 0;
+    // task->esp = (uint32_t)stack;
+    // task->state = TASK_READY;
+    // task->next = task_list;
+    // task_list = task;
+    // task->eip = (uint32_t)entry;
+    // task->eflags = 0x202;
 }
 
-
-void task1()
+void scheduler_init(void)
 {
-    printf("Task 1 running\n");
-    while (1) asm("hlt");
+    task_t *idle = kmalloc(sizeof(task_t));
+    uint32_t *stack = kmalloc(STACK_SIZE);
+    stack += STACK_SIZE / sizeof(uint32_t);
+
+    // *--stack = 0x202;
+    // *--stack = 0x08;
+    *--stack = (uint32_t)kernel_main;
+
+    idle->cpu.esp_ = (uint32_t)stack;
+    idle->cpu.eip = (uint32_t)kernel_main;
+    idle->state = TASK_RUNNING;
+    idle->next = idle;
+    current_task = idle;
+    task_list = idle;
 }
 
-void task2()
+void task_1(void)
 {
-    printf("Task 2 running\n");
-    while (1) asm("hlt");
+    puts("Task 1 Started\n");
+    while (1)
+    {
+        puts("Task 1\n");
+    }
 }
 
-void init_tasks()
+void task_2(void)
 {
-    init_task(&tasks[0], task1, KB(4), 1);
-    init_task(&tasks[1], task2, KB(4), 2);
-    // switch_to_task(&tasks[0]);  // Start first task
-    enable_interrupts();
+    puts("Task 2 Started\n");
+    while (1)
+    {
+        puts("Task 2\n");
+    }
+}
 
-    task1();
+void start_foo_tasks(void)
+{
+    create_task(task_1);
+    create_task(task_2);
 }

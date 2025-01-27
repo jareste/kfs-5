@@ -23,14 +23,14 @@ void kernel_main()
 
     init_signals();
 
-
-    init_tasks();
+    scheduler_init();
+    start_foo_tasks();
     enable_interrupts();
-
-    kshell();
-    printf("Exiting shell...\n");
-    /* Keep CPU busy */
     while (1)
     {
     }
+    kshell();
+    printf("Exiting shell...\n");
+    /* Keep CPU busy */
+    
 }

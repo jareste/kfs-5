@@ -81,6 +81,9 @@ re: fclean all
 run:
 	qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
 
+run_debug:
+	qemu-system-i386 -kernel $(BIN_NAME) -d int,cpu_reset -m 4096
+
 run_grub: build_iso
 	qemu-system-i386 -cdrom $(NAME)
 

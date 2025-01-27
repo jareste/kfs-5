@@ -33,7 +33,7 @@ void irq_handler_timer()
         seconds++;
     }
     /* I think i'm sending it somewhere else */
-    outb(0x20, 0x20);
+    // outb(0x20, 0x20);
 }
 
 uint64_t get_kuptime()

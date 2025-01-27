@@ -77,15 +77,16 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     (void) stack;
     (void) reg;
 
-    static int timer_ticks = 0;
-    timer_ticks++;
+    // static int timer_ticks = 0;
+    // timer_ticks++;
 
-    if (timer_ticks % 200 == 0)
-    {
-        timer_ticks = 0;
-        // printf("Switching tasks\n");
-        schedule();
-    }
+    disable_interrupts();
+    // if (timer_ticks % 200 == 0)
+    // {
+    //     timer_ticks = 0;
+    //     // printf("Switching tasks\n");
+    // }
+        scheduler();
 
     switch (intr_no)
     {
@@ -102,6 +103,7 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
             kernel_panic("Unknown interrupt");
     }
 
+    enable_interrupts();
 	outb(PIC_EOI, PIC1_COMMAND);
 }
 

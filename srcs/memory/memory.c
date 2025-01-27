@@ -843,20 +843,20 @@ static void show_user_allocations()
 #include "../tasks/task.h"
 void debug_task_stack(task_t *task)
 {
-    uint32_t pd_index = (uintptr_t)task->stack >> 22;
-    uint32_t pt_index = ((uintptr_t)task->stack >> 12) & 0x3FF;
+    // uint32_t pd_index = (uintptr_t)task->stack >> 22;
+    // uint32_t pt_index = ((uintptr_t)task->stack >> 12) & 0x3FF;
 
-    printf("Debugging task stack for PID %d:\n", task->pid);
-    printf("  Stack Base: %x\n", (uint32_t)task->stack);
-    printf("  Page Directory Entry: %x\n", page_directory[pd_index]);
+    // printf("Debugging task stack for PID %d:\n", task->pid);
+    // printf("  Stack Base: %x\n", (uint32_t)task->stack);
+    // printf("  Page Directory Entry: %x\n", page_directory[pd_index]);
 
-    if (page_directory[pd_index] & PAGE_PRESENT)
-    {
-        page_table_t* table = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-        printf("  Page Table Entry: %x\n", (*table)[pt_index]);
-    }
-    else
-    {
-        printf("  PDE not present!\n");
-    }
+    // if (page_directory[pd_index] & PAGE_PRESENT)
+    // {
+    //     page_table_t* table = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
+    //     printf("  Page Table Entry: %x\n", (*table)[pt_index]);
+    // }
+    // else
+    // {
+    //     printf("  PDE not present!\n");
+    // }
 }
