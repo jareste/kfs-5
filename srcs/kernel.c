@@ -26,6 +26,8 @@ void kernel_main()
     scheduler_init();
     start_foo_tasks();
     enable_interrupts();
+    scheduler();
+
     while (1)
     {
     }

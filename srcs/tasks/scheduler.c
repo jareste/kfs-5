@@ -32,6 +32,11 @@ void scheduler(void)
     // printf("start_func: %p \n", task_1);
     // printf("current: %p -> %p\n", current_task, next);
     
+    if (next->pid == 0)
+    {
+        next = next->next;
+    }
+
     // if (next != current_task)
     // {
         task_t *prev = current_task;
@@ -123,10 +128,10 @@ void task_1(void)
     {
         i++;
         puts_color("Task 1\n", i %128);
-        if (i % 1000 == 0)
-        {
+        // if (i % 1000 == 0)
+        // {
             scheduler();
-        }
+        // }
     }
 }
 
@@ -138,10 +143,10 @@ void task_2(void)
     {
         i++;
         puts("Task 2\n");
-        if (i % 1000 == 0)
-        {
+        // if (i % 1000 == 0)
+        // {
             scheduler();
-        }
+        // }
     }
 }
 
