@@ -90,7 +90,7 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     {
         case 0:
             // scheduler();
-            disable_interrupts();
+            // disable_interrupts();
             irq_handler_timer();
             break;
         case 1:
@@ -104,6 +104,7 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     }
 
     enable_interrupts();
+    puts("#######################################################");
 	outb(PIC_EOI, PIC1_COMMAND);
 }
 
