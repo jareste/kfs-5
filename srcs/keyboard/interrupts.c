@@ -63,7 +63,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     kill(0, intr_no);
     handle_signals();
     
-    // while(1);
+    while(1);
     if (intr_no >= 32)
     {
         outb(PIC_EOI, PIC1_COMMAND);
@@ -77,8 +77,11 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     (void) stack;
     (void) reg;
 
-    // static int timer_ticks = 0;
-    // timer_ticks++;
+    static int timer_ticks = 0;
+    if (timer_ticks > 20)
+        timer_ticks = 0;
+    timer_ticks++;
+
 
     // if (timer_ticks % 200 == 0)
     // {
@@ -92,6 +95,8 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
             // scheduler();
             // disable_interrupts();
             irq_handler_timer();
+            if (timer_ticks % 20 == 0)
+                scheduler();
             break;
         case 1:
             keyboard_handler();
@@ -103,11 +108,13 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
             kernel_panic("Unknown interrupt");
     }
 
+    // while(1);
     enable_interrupts();
-    puts("#######################################################");
+    puts("#######################################################\n");
 	outb(PIC_EOI, PIC1_COMMAND);
 }
 
+extern void timer_handler_asm(void);
 void init_interrupts()
 {
     idt_set_gate(0, (uint32_t)isr_handler_0); /* Division by zero */
@@ -162,7 +169,7 @@ void init_interrupts()
     outb(0x21, inb(0x21) & ~0x01); // Clear the mask for IRQ0
 
 
-    idt_set_gate(32, (uint32_t)irq_handler_0); /* Programmable Interrupt Timer Interrupt */
+    idt_set_gate(32, (uint32_t)timer_handler_asm); /* Programmable Interrupt Timer Interrupt */
     idt_set_gate(33, (uint32_t)irq_handler_1); /* Keyboard */
     idt_set_gate(34, (uint32_t)irq_handler_2); /* Cascade (Never raised) */
     idt_set_gate(35, (uint32_t)irq_handler_3); /* COM2 */

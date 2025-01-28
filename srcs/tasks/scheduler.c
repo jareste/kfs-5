@@ -16,6 +16,54 @@ void kernel_main();
 void task_1(void);
 
 extern void switch_context(task_t *prev, task_t *next);
+extern void switch_context_no_int(task_t *prev, task_t *next);
+
+typedef struct cpu_state
+{
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t ebp;
+    uint32_t esp_;
+    uint32_t eip;
+    uint32_t eflags;
+} cpu_state_t;
+
+void print_cpu_state(cpu_state* state)
+{
+    printf("CPU State:\n");
+    printf("EBX: %p\n", state->ebx);
+    printf("ECX: %p\n", state->ecx);
+    printf("EDX: %p\n", state->edx);
+    printf("ESI: %p\n", state->esi);
+    printf("EDI: %p\n", state->edi);
+    printf("EBP: %p\n", state->ebp);
+    printf("ESP: %p\n", state->esp_);
+    printf("EIP: %p\n", state->eip);
+    printf("EFLAGS: %p\n", state->eflags);
+}
+
+void print_task(task_t *task)
+{
+    printf("Task %d\n", task->pid);
+    print_cpu_state(&task->cpu);
+    
+}
+
+void shceduler_handler(void)
+{
+    static int i = 0;
+    if (i > 20)
+        i = 0;
+    i++;
+    outb(0x20, 0x20);
+    enable_interrupts();
+    if (i % 20 == 0)
+        scheduler();
+    
+}
 
 void scheduler(void)
 {
@@ -48,6 +96,45 @@ void scheduler(void)
 
         current_task = next;
         switch_context(prev, next);
+        // while(1);
+        // puts("Switched\n");
+    // }
+    // printf("Task fault\n");
+        // while(1);
+}
+
+void scheduler_no_int(void)
+{
+    if (!current_task) return;
+    
+    task_t *next = current_task->next;
+    // if (!next || next->state != TASK_READY)
+    // {
+    //     next = task_list;
+    // }
+    printf("Schniwitching task %d -> %d\n", current_task->pid, next->pid);
+    // printf("ESP: %p -> %p\n", current_task->cpu.esp_, next->cpu.esp_);
+    // printf("EIP: %p -> %p\n", current_task->cpu.eip, next->cpu.eip);
+    // printf("start_func: %p \n", task_1);
+    // printf("current: %p -> %p\n", current_task, next);
+    
+    if (next->pid == 0)
+    {
+        next = next->next;
+    }
+
+    // if (next != current_task)
+    // {
+        task_t *prev = current_task;
+        // printf("trying to switch context\n");
+        // while(1);
+        tss_set_stack(next->kernel_stack);
+        // enable_interrupts();
+    	// outb(0x20, 0x20);
+
+        current_task = next;
+        // enable_interrupts();
+        switch_context_no_int(prev, next);
         // while(1);
         puts("Switched\n");
     // }
@@ -130,7 +217,7 @@ void task_1(void)
         puts_color("Task 1\n", i %128);
         // if (i % 1000 == 0)
         // {
-            scheduler();
+            // scheduler();
         // }
     }
 }
@@ -145,7 +232,7 @@ void task_2(void)
         puts("Task 2\n");
         // if (i % 1000 == 0)
         // {
-            scheduler();
+            // scheduler();
         // }
     }
 }

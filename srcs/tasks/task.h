@@ -28,8 +28,10 @@ typedef struct task_struct {
 extern task_t *current_task;
 
 void scheduler(void);
+void scheduler_no_int(void);
 void start_foo_tasks(void);
 void scheduler_init(void);
+void scheduler_handler(void);
 
 
 #endif

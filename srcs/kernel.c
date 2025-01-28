@@ -26,8 +26,9 @@ void kernel_main()
     scheduler_init();
     start_foo_tasks();
     enable_interrupts();
-    scheduler();
+    scheduler_no_int();
 
+    /* avoid at all costs entering kshell for now. */
     while (1)
     {
     }

@@ -53,6 +53,16 @@ syscall_handler_asm:
     popa
     iret
 
+[extern shceduler_handler]
+global timer_handler_asm
+timer_handler_asm:
+    pusha
+    call shceduler_handler
+    popa
+    iret
+
+
+
 ; handles irqs (hardware interrupts)
 common_irq_handler:
 	; save registers

@@ -3,7 +3,8 @@
 
 #include "../utils/stdint.h"
 
-typedef struct cpu_state {
+typedef struct cpu_state
+{
     uint32_t ebx;
     uint32_t ecx;
     uint32_t edx;
