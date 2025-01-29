@@ -12,8 +12,6 @@ typedef enum {
     GLOBAL = 0,
     GENERAL,
     MEMORY,
-    MISC,
-    SYSTEM,
     DEBUG,
     TASKS,
     SECTION_T_MAX

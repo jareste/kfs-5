@@ -15,9 +15,8 @@ void task_1(void);
 extern void switch_context(task_t *prev, task_t *next);
 void show_tasks();
 
-
 static command_t commands[] = {
-    {"stasks", "Show active tasks", show_tasks},
+    {"show", "Show active tasks", show_tasks},
     {NULL, NULL, NULL}
 };
 
@@ -153,7 +152,7 @@ void scheduler_init(void)
     install_all_cmds(commands, TASKS);
 }
 
-void task_3(void)
+void task_write(void)
 {
     puts("Task 3 Started\n");
     int i = 0;
@@ -168,7 +167,7 @@ void task_3(void)
         const char* msg = "Hello, world!\n";
         size_t msg_len = strlen(msg);
 
-        puts_color("TEST_WRITE\n", LIGHT_MAGENTA);
+        // puts_color("TEST_WRITE\n", LIGHT_MAGENTA);
         asm volatile (
             "mov $1, %%eax\n"
             "mov $1, %%ebx\n"
@@ -222,12 +221,63 @@ void task_2(void)
     }
 }
 
+void recursion()
+{
+    static unsigned int i = 0;
+    // puts("Recursion\n" );
+    printf("Recursion %d\n", i++);
+    scheduler();
+    recursion();
+}
+
+void test_recursion(void)
+{
+    recursion();
+}
+
+void task_read()
+{
+    while (1)
+    {
+        char buffer[10];
+        int return_value;
+        // puts_color("TEST_READ\n", LIGHT_MAGENTA);
+        // printf("Buffer before sys_read: %s\n", buffer);
+
+        asm volatile (
+            "mov $2, %%eax\n"
+            "mov $0, %%ebx\n"
+            "mov %1, %%ecx\n"
+            "mov %2, %%edx\n"
+            "int $0x80\n"
+            "mov %%eax, %0\n"
+            : "=r"(return_value)
+            : "r"(buffer), "r"(sizeof(buffer))
+            : "eax", "ebx", "ecx", "edx"
+        );
+
+        // printf("Buffer after sys_read: '");
+        // for (size_t i = 0; i < 10; i++)
+        // {
+        //     if (buffer[i] == 0)
+        //         break;
+        //     putc(buffer[i]);
+        // }
+        // puts("'\n");
+        // printf("SYS_READ return value: %d\n", return_value);
+        scheduler();
+    }
+}
+
 void kshell();
 void start_foo_tasks(void)
 {
     create_task(task_1, "task_1");
     create_task(task_2, "task_2");
+    // create_task(task_write, "task_3");
+    create_task(task_read, "task_read");
     create_task(kshell, "kshell");
+    // create_task(test_recursion, "recursion");
 }
 
 /* ################################################################### */

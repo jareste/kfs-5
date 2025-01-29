@@ -113,8 +113,6 @@ void init_kshell()
     init_section("global", GLOBAL);
     init_section("general", GENERAL);
     init_section("memory", MEMORY);
-    init_section("misc", MISC);
-    init_section("system", SYSTEM);
     init_section("debug", DEBUG);
     init_section("tasks", TASKS);
 

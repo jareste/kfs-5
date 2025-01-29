@@ -56,12 +56,12 @@ int sys_read(int fd, char* buf, size_t count)
 
     memcpy(buf, data, count);
 
-    printf("Syscall: read(%d, %p, %d) - Filled buffer with: '", fd, buf, count);
-    for (size_t i = 0; i < count; i++)
-    {
-        putc(buf[i]);
-    }
-    puts("'\n");
+    // printf("Syscall: read(%d, %p, %d) - Filled buffer with: '", fd, buf, count);
+    // for (size_t i = 0; i < count; i++)
+    // {
+    //     putc(buf[i]);
+    // }
+    // puts("'\n");
 
     return count;
 }
