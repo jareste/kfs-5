@@ -104,7 +104,7 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     }
 
     enable_interrupts();
-    puts("#######################################################");
+    // puts("#######################################################");
 	outb(PIC_EOI, PIC1_COMMAND);
 }
 

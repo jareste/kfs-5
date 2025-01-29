@@ -15,6 +15,7 @@ typedef enum {
     MISC,
     SYSTEM,
     DEBUG,
+    TASKS,
     SECTION_T_MAX
 } section_t;
 

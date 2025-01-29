@@ -116,6 +116,7 @@ void init_kshell()
     init_section("misc", MISC);
     init_section("system", SYSTEM);
     init_section("debug", DEBUG);
+    init_section("tasks", TASKS);
 
     current_section = GLOBAL;
 

@@ -22,6 +22,7 @@ typedef struct task_struct {
     // uint32_t eax;
     // uint32_t eflags;
     uintptr_t kernel_stack; // Kernel Stack (for syscalls)
+    char name[16];
     /* missing fields but untill it'll not work makes no sense to add them */    
 } task_t;
 
