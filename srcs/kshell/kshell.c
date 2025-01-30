@@ -425,17 +425,7 @@ void test_syscall()
     size_t msg_len = strlen(msg);
 
     puts_color("TEST_WRITE\n", LIGHT_MAGENTA);
-    asm volatile (
-        "mov $1, %%eax\n"
-        "mov $1, %%ebx\n"
-        "mov %1, %%ecx\n"
-        "mov %2, %%edx\n"
-        "int $0x80\n"
-        "mov %%eax, %0\n"
-        : "=r"(return_value)
-        : "r"(msg), "r"(msg_len)
-        : "eax", "ebx", "ecx", "edx"
-    );
+    return_value = write(1, msg, msg_len);
     printf("SYS_WRITE return value: %d\n", return_value);
     
     test_syscall_read();
