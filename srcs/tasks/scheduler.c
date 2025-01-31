@@ -34,29 +34,7 @@ void free_finished_tasks()
     kfree((void*)to_free->kernel_stack);
     kfree((void*)to_free->stack);
     kfree(to_free);
-    // kfree((void*)task->kernel_stack);
-    // kfree((void*)current_task->stack);
-    // kfree(task);
     to_free = NULL;
-    // printf("Tasks freed\n");
-}
-
-void add_to_free(task_t* task)
-{
-    printf("Adding task %d to free\n", task->pid);
-    if (!to_free)
-    {
-        to_free = task;
-        task->next = NULL;
-    }
-    else
-    {
-        task_t *current = to_free;
-        while (current->next)
-            current = current->next;
-        current->next = task;
-        task->next = NULL;
-    }
 }
 
 task_t* get_current_task()
@@ -83,41 +61,20 @@ void scheduler(void)
     free_finished_tasks();
 
     task_t *next = current_task->next;
-    // if (next->state == TASK_TO_DIE)
-    // {
-    //     printf("Task %d to die\n", next->pid);
-    //     task_exit_task(next);
-    //     next = current_task->next;
-    // }
 
     if (next->pid == 0)
     {
         next = next->next;
     }
 
-    // if (next != current_task)
-    // {
-        task_t *prev = current_task;
-        // printf("trying to switch context\n");
-        // while(1);
-        tss_set_stack(next->kernel_stack);
-        // enable_interrupts();
-    	// outb(0x20, 0x20);
+    task_t *prev = current_task;
+    tss_set_stack(next->kernel_stack);
 
-        // if (next->pid == 1)
-        // {
-        //     puts_color("Switching to idle\n", RED);
-        // }
-        current_task = next;
-        uint32_t *stack = (uint32_t*)next->cpu.esp_;
-        *--stack = (uint32_t)handle_signals;
-        next->cpu.esp_ = (uint32_t)stack;
-        switch_context(prev, next);
-        // while(1);
-        // puts("Switched\n");
-    // }
-    // printf("Task fault\n");
-        // while(1);
+    current_task = next;
+    uint32_t *stack = (uint32_t*)next->cpu.esp_;
+    *--stack = (uint32_t)handle_signals;
+    next->cpu.esp_ = (uint32_t)stack;
+    switch_context(prev, next);
 }
 
 void add_new_task(task_t* new_task)
@@ -151,17 +108,8 @@ static void task_exit_task(task_t* task)
     prev->next = task->next;
 
     pid_t pid = task->pid;
-    // printf("Current task: %d\n", current_task->pid);
-    // printf("Freeing task %d\n", task->pid);
-    // prev = to_free;
-    // while (prev && prev->next != task)
-    //     prev = prev->next;
 
     to_free = task;
-
-    // kfree((void*)task->kernel_stack);
-    // kfree((void*)current_task->stack);
-    // kfree(task);
 
     scheduler();
 }

@@ -60,6 +60,10 @@ void handle_signals()
 
 void kill(pid_t pid, int signal)
 {
+    if (pid == 0)
+    {
+        return;
+    }
     task_t *task = find_task(pid);
     if (!task)
     {
