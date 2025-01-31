@@ -40,19 +40,9 @@ void unblock_signal(int signal)
 void handle_signals()
 {
     task_t *task = get_current_task();
-    // if (task->pid == 1)
-    // {
-    //     printf("Handling signals for PID 1\n");
-    //     while (1);
-    // }
     if (task->signals.pending_signals == 0)
     {
         return;
-    }
-    else
-    {
-        printf("Handling signals for PID %d, active: %x\n", task->pid,task->signals.pending_signals);
-        printf("Blocked signals: %x\n", task->signals.blocked_signals);
     }
     for (int i = 0; i < MAX_SIGNALS; i++)
     {
@@ -60,10 +50,8 @@ void handle_signals()
          !(task->signals.blocked_signals & (1 << i)))
         {
             task->signals.pending_signals &= ~(1 << i);
-            printf("Handling signal %d for pid %d\n", i, task->pid);
             if (task->signals.handlers[i])
             {
-                printf("Handling signal %d for pid %d\n", i, task->pid);
                 task->signals.handlers[i](i);
             }
         }
@@ -80,10 +68,7 @@ void kill(pid_t pid, int signal)
     }
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        printf("Sending signal %d to PID %d\n", signal, pid);
-        printf("Pending signals: %x\n", task->signals.pending_signals);
         task->signals.pending_signals |= (1 << signal);
-        printf("Pending signals: %x\n", task->signals.pending_signals);
     }
 }
 
@@ -94,7 +79,6 @@ static void signal_handler(int signal)
 
 static void panic_signal_handler(int signal)
 {
-    printf("Panic signal %d received\n", signal);
     kernel_panic("Panic signal received");
 }
 

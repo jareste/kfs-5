@@ -29,32 +29,14 @@ pid_t task_index = 0;
 
 void free_finished_tasks()
 {
-    task_t *current = to_free;
-    // to_free = NULL;
-    pid_t pid;
-    while (current)
-    {
-        task_t *next = current->next;
-        // if (current == current_task)
-        // {
-        //     current = next;
-        //     to_free = current;
-        //     printf("Current task to free\n");
-        //     printf("Next task: %p\n", next);
-        //     if (next == NULL)
-        //         break;
-        //     continue;
-        // }
-        pid = current->pid;
-        printf("Task %d freed\n", pid);
-        kfree((void*)current->kernel_stack);
-        printf("Kernel stack freed\n");
-        kfree((void*)current->stack);
-        printf("User stack freed\n");
-        kfree(current);
-        printf("Task struct freed\n");
-        current = next;
-    }
+    if (!to_free)
+        return;
+    kfree((void*)to_free->kernel_stack);
+    kfree((void*)to_free->stack);
+    kfree(to_free);
+    // kfree((void*)task->kernel_stack);
+    // kfree((void*)current_task->stack);
+    // kfree(task);
     to_free = NULL;
     // printf("Tasks freed\n");
 }
@@ -159,8 +141,8 @@ void add_new_task(task_t* new_task)
 
 static void task_exit_task(task_t* task)
 {
-    // if (task->on_exit)
-    //     task->on_exit();
+    if (task->on_exit)
+        task->on_exit();
 
     task_t *prev = current_task;
     while (prev->next != task)
@@ -169,19 +151,18 @@ static void task_exit_task(task_t* task)
     prev->next = task->next;
 
     pid_t pid = task->pid;
-    printf("Current task: %d\n", current_task->pid);
-    printf("Freeing task %d\n", task->pid);
+    // printf("Current task: %d\n", current_task->pid);
+    // printf("Freeing task %d\n", task->pid);
     // prev = to_free;
     // while (prev && prev->next != task)
     //     prev = prev->next;
 
-    // add_to_free(task);
+    to_free = task;
 
-    kfree((void*)task->kernel_stack);
-    kfree((void*)current_task->stack);
-    kfree(task);
+    // kfree((void*)task->kernel_stack);
+    // kfree((void*)current_task->stack);
+    // kfree(task);
 
-    printf("Task %d exited\n", pid);
     scheduler();
 }
 
@@ -201,8 +182,6 @@ static void task_exit()
 
 void kill_task()
 {
-    printf("Killing task %d\n", current_task->pid);
-    puts_color("Task killed\n", GREEN);
     task_exit_task(current_task);
     // current_task->state = TASK_TO_DIE;
 }
