@@ -13,6 +13,7 @@
 void kernel_main();
 void task_1(void);
 static void task_exit_pid(pid_t task_id);
+static void task_exit_task(task_t* task);
 extern void switch_context(task_t *prev, task_t *next);
 void show_tasks();
 
@@ -21,9 +22,60 @@ static command_t commands[] = {
     {NULL, NULL, NULL}
 };
 
-task_t *current_task = NULL;
-task_t *task_list = NULL;
+task_t* current_task = NULL;
+task_t* task_list = NULL;
+task_t* to_free = NULL;
 pid_t task_index = 0;
+
+void free_finished_tasks()
+{
+    task_t *current = to_free;
+    // to_free = NULL;
+    pid_t pid;
+    while (current)
+    {
+        task_t *next = current->next;
+        // if (current == current_task)
+        // {
+        //     current = next;
+        //     to_free = current;
+        //     printf("Current task to free\n");
+        //     printf("Next task: %p\n", next);
+        //     if (next == NULL)
+        //         break;
+        //     continue;
+        // }
+        pid = current->pid;
+        printf("Task %d freed\n", pid);
+        kfree((void*)current->kernel_stack);
+        printf("Kernel stack freed\n");
+        kfree((void*)current->stack);
+        printf("User stack freed\n");
+        kfree(current);
+        printf("Task struct freed\n");
+        current = next;
+    }
+    to_free = NULL;
+    // printf("Tasks freed\n");
+}
+
+void add_to_free(task_t* task)
+{
+    printf("Adding task %d to free\n", task->pid);
+    if (!to_free)
+    {
+        to_free = task;
+        task->next = NULL;
+    }
+    else
+    {
+        task_t *current = to_free;
+        while (current->next)
+            current = current->next;
+        current->next = task;
+        task->next = NULL;
+    }
+}
 
 task_t* get_current_task()
 {
@@ -46,11 +98,15 @@ void scheduler(void)
 {
     if (!current_task) return;
     
+    free_finished_tasks();
+
     task_t *next = current_task->next;
-    if (next->state == TASK_TO_DIE)
-    {
-        task_exit_pid(next->pid);
-    }
+    // if (next->state == TASK_TO_DIE)
+    // {
+    //     printf("Task %d to die\n", next->pid);
+    //     task_exit_task(next);
+    //     next = current_task->next;
+    // }
 
     if (next->pid == 0)
     {
@@ -66,7 +122,14 @@ void scheduler(void)
         // enable_interrupts();
     	// outb(0x20, 0x20);
 
+        // if (next->pid == 1)
+        // {
+        //     puts_color("Switching to idle\n", RED);
+        // }
         current_task = next;
+        uint32_t *stack = (uint32_t*)next->cpu.esp_;
+        *--stack = (uint32_t)handle_signals;
+        next->cpu.esp_ = (uint32_t)stack;
         switch_context(prev, next);
         // while(1);
         // puts("Switched\n");
@@ -96,19 +159,29 @@ void add_new_task(task_t* new_task)
 
 static void task_exit_task(task_t* task)
 {
-    if (task->on_exit)
-        task->on_exit();
+    // if (task->on_exit)
+    //     task->on_exit();
 
-    task_t *prev = task_list;
+    task_t *prev = current_task;
     while (prev->next != task)
         prev = prev->next;
 
     prev->next = task->next;
 
+    pid_t pid = task->pid;
+    printf("Current task: %d\n", current_task->pid);
+    printf("Freeing task %d\n", task->pid);
+    // prev = to_free;
+    // while (prev && prev->next != task)
+    //     prev = prev->next;
+
+    // add_to_free(task);
+
     kfree((void*)task->kernel_stack);
     kfree((void*)current_task->stack);
     kfree(task);
 
+    printf("Task %d exited\n", pid);
     scheduler();
 }
 
@@ -124,6 +197,14 @@ static void task_exit_pid(pid_t task_id)
 static void task_exit()
 {
     task_exit_task(current_task);
+}
+
+void kill_task()
+{
+    printf("Killing task %d\n", current_task->pid);
+    puts_color("Task killed\n", GREEN);
+    task_exit_task(current_task);
+    // current_task->state = TASK_TO_DIE;
 }
 
 void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
@@ -152,6 +233,7 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     memcpy(task->name, name, strlen(name) > 15 ? 15 : strlen(name));
     task->name[strlen(name) > 15 ? 15 : strlen(name)] = '\0';
     task->on_exit = on_exit;
+    init_signals(task);
     add_new_task(task);
     printf("Task %d created\n", task->pid);
 }
@@ -176,8 +258,11 @@ void scheduler_init(void)
     idle->name[4] = '\0';
     current_task = idle;
     task_list = idle;
+    to_free = NULL;
     install_all_cmds(commands, TASKS);
 }
+
+/*************************************** */
 
 void task_write(void)
 {

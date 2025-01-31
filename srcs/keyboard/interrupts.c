@@ -61,7 +61,6 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     }
 
     kill(0, intr_no);
-    handle_signals();
     
     // while(1);
     if (intr_no >= 32)

@@ -37,16 +37,33 @@ void unblock_signal(int signal)
     }
 }
 
-void handle_signals(task_t* task)
+void handle_signals()
 {
+    task_t *task = get_current_task();
+    // if (task->pid == 1)
+    // {
+    //     printf("Handling signals for PID 1\n");
+    //     while (1);
+    // }
+    if (task->signals.pending_signals == 0)
+    {
+        return;
+    }
+    else
+    {
+        printf("Handling signals for PID %d, active: %x\n", task->pid,task->signals.pending_signals);
+        printf("Blocked signals: %x\n", task->signals.blocked_signals);
+    }
     for (int i = 0; i < MAX_SIGNALS; i++)
     {
         if ((task->signals.pending_signals & (1 << i)) &&\
          !(task->signals.blocked_signals & (1 << i)))
         {
             task->signals.pending_signals &= ~(1 << i);
+            printf("Handling signal %d for pid %d\n", i, task->pid);
             if (task->signals.handlers[i])
             {
+                printf("Handling signal %d for pid %d\n", i, task->pid);
                 task->signals.handlers[i](i);
             }
         }
@@ -63,14 +80,16 @@ void kill(pid_t pid, int signal)
     }
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
+        printf("Sending signal %d to PID %d\n", signal, pid);
+        printf("Pending signals: %x\n", task->signals.pending_signals);
         task->signals.pending_signals |= (1 << signal);
+        printf("Pending signals: %x\n", task->signals.pending_signals);
     }
-    handle_signals(task);
 }
 
 static void signal_handler(int signal)
 {
-    // update_task_state(get_current_task(), TASK_READY);
+    kill_task();
 }
 
 static void panic_signal_handler(int signal)
@@ -96,6 +115,8 @@ void init_signals(task_t* task)
     signal_task(task, 6, panic_signal_handler);
     signal_task(task, 14, panic_signal_handler);
 
+    // printf("Signal handlers set for PID %d\n", task->pid);
+    // task->signals.handlers[6](6);
     task->signals.pending_signals = 0;
     task->signals.blocked_signals = 0;
 }

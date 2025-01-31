@@ -21,7 +21,7 @@ void kernel_main()
 
     init_timer();
 
-    init_signals();
+    // init_signals();
 
     scheduler_init();
     start_foo_tasks();

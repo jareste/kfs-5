@@ -53,7 +53,6 @@ static command_t in_commands[] = {
     {"exit", "Exit the shell", NULL},
     {"color", "Set shell color", color},
     {"uptime", "Get the system uptime in seconds.", kuptime},
-    {"kill", "Kill a process", ks_kill},
     {"layout", "Set keyboard layout", set_layout},
     {NULL, NULL, NULL}
 };
@@ -68,6 +67,11 @@ static command_t dcommand[] = {
     {"raise0", "Raise a division by zero exception", trigger_interrupt_software_0},
     {"raise6", "Raise an invalid opcode exception", trigger_interrupt_software_6},
     {"syscall", "Test syscalls", test_syscall},
+    {NULL, NULL, NULL}
+};
+
+static command_t tcommand[] = {
+    {"kill", "Kill a task", ks_kill},
     {NULL, NULL, NULL}
 };
 
@@ -122,6 +126,7 @@ void init_kshell()
     install_all_cmds(global_commands, GLOBAL);
     install_all_cmds(in_commands, GENERAL);
     install_all_cmds(dcommand, DEBUG);
+    install_all_cmds(tcommand, TASKS);
 }
 
 static void kuptime()
