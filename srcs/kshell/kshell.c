@@ -166,7 +166,7 @@ static void ks_kill()
 
     signal = (int)hex_string_to_int(buffer);
     printf("Killing PID: %d with signal: %d\n", pid, signal);
-    kill(pid, signal);
+    kill(pid, signal); /* this kill is the one wrapped into interrupt */
 }
 
 static void color()

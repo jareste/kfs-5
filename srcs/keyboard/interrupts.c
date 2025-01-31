@@ -60,7 +60,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
         page_fault_handler(&reg, &stack);
     }
 
-    kill(0, intr_no);
+    _kill(0, intr_no); /* kernell side so call _kill directly */
     
     // while(1);
     if (intr_no >= 32)

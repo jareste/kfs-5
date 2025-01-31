@@ -32,6 +32,9 @@ switch_context:
     ; Return to new task's EIP (stored on its stack)
     ret
 
+
+section .note.GNU-stack noalloc noexec nowrite progbits
+
 ; global switch_context
 ; switch_context:
 ;     mov eax, [esp + 4]  ; prev task

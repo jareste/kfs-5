@@ -12,6 +12,7 @@
 
 void kernel_main();
 void task_1(void);
+void task_1_exit();
 static void task_exit_pid(pid_t task_id);
 static void task_exit_task(task_t* task);
 extern void switch_context(task_t *prev, task_t *next);
@@ -225,6 +226,11 @@ void task_write(void)
     }
 }
 
+void task_1_exit()
+{
+    puts_color("Task 1 exited\n", RED);
+}
+
 void task_1(void)
 {
     puts("Task 1 Started\n");
@@ -316,7 +322,7 @@ void task_read()
 void kshell();
 void start_foo_tasks(void)
 {
-    create_task(task_1, "task_1", NULL);
+    create_task(task_1, "task_1", task_1_exit);
     create_task(task_2, "task_2", task_2_exit);
     // create_task(task_write, "task_3");
     create_task(task_read, "task_read", NULL);

@@ -14,7 +14,7 @@ void signal_task(task_t* task, int signal, signal_handler_t handler)
     }
 }
 
-void signal(int signal, signal_handler_t handler)
+int _signal(int signal, signal_handler_t handler)
 {
     signal_task(get_current_task(), signal, handler);
 }
@@ -58,22 +58,23 @@ void handle_signals()
     }
 }
 
-void kill(pid_t pid, int signal)
+int _kill(pid_t pid, int signal)
 {
     if (pid == 0)
     {
-        return;
+        return -1;
     }
     task_t *task = find_task(pid);
     if (!task)
     {
         printf("Task with PID %d not found\n", pid);
-        return;
+        return -1;
     }
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
         task->signals.pending_signals |= (1 << signal);
     }
+    return 0;
 }
 
 static void signal_handler(int signal)

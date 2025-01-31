@@ -51,6 +51,8 @@ syscall_handler_asm:
     call syscall_handler
     mov [esp + 28], eax
     popa
+	mov eax, 0x20
+	out 0x20, al
     iret
 
 ; handles irqs (hardware interrupts)

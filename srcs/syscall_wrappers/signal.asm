@@ -1,14 +1,13 @@
 %define syscall int 0x80
 
-global write
-write:
+global signal
+signal:
     push ebp
     mov ebp, esp
 
     mov ebx, [ebp + 8]
     mov ecx, [ebp + 12]
-    mov edx, [ebp + 16]
-    mov eax, 1
+    mov eax, 8
 
     syscall
 

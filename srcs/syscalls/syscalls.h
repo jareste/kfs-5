@@ -10,8 +10,9 @@
 #define SYS_GETPID  5
 #define SYS_SLEEP   6
 #define SYS_KILL    7
+#define SYS_SIGNAL  8
 
-#define MAX_SYSCALLS 8
+#define MAX_SYSCALLS 9
 
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack);
 

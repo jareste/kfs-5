@@ -2,6 +2,7 @@
 #include "../utils/stdint.h"
 #include "../display/display.h"
 #include "../tasks/task.h"
+#include "../keyboard/signals.h"
 
 typedef int (*syscall_handler_6_t)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5, uint32_t arg6);
 typedef int (*syscall_handler_5_t)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
@@ -54,7 +55,7 @@ int sys_write(int fd, const char* buf, size_t count)
 {
     if (!buf || count == 0)
     {
-        printf("Invalid buffer or count\n");
+        printf("Write: Invalid buffer or count\n");
         return -1;
     }
     puts(buf);
@@ -65,7 +66,7 @@ int sys_read(int fd, char* buf, size_t count)
 {
     if (!buf || count == 0)
     {
-        printf("Invalid buffer or count\n");
+        printf("Read: Invalid buffer or count\n");
         return -1;
     }
 
@@ -114,8 +115,12 @@ void sys_sleep(uint32_t seconds)
 
 int sys_kill(uint32_t pid, uint32_t signal)
 {
-    printf("Syscall: kill(%d, %d)\n", pid, signal);
-    return 0;
+    return _kill(pid, signal);
+}
+
+int sys_signal(int signal, signal_handler_t handler)
+{
+    return _signal(signal, handler);
 }
 
 syscall_entry_t syscall_table[MAX_SYSCALLS] = {
@@ -127,6 +132,7 @@ syscall_entry_t syscall_table[MAX_SYSCALLS] = {
     { .handler.handler_0 = (syscall_handler_0_t)sys_get_pid,    .num_args = 0, .ret_value_entry = RET_INT },
     { .handler.handler_1 = (syscall_handler_1_t)sys_sleep,      .num_args = 1, .ret_value_entry = RET_INT },
     { .handler.handler_2 = (syscall_handler_2_t)sys_kill,       .num_args = 2, .ret_value_entry = RET_INT },
+    { .handler.handler_2 = (syscall_handler_2_t)sys_signal,     .num_args = 2, .ret_value_entry = RET_INT },
 };
 
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
@@ -148,6 +154,7 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
 
     syscall_entry_t entry = syscall_table[syscall_number];
 
+    // printf("Syscall: %d\n", syscall_number);
     syscall_return_t ret_value;
     switch (entry.num_args)
     {
