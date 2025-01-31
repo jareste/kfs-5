@@ -8,18 +8,32 @@ void signal_task(task_t* task, int signal, signal_handler_t handler)
 {
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        printf("handler: %p\n", handler);
-        printf("task: %d\n", task->pid);
-        printf("signal: %d\n", signal);
+        if (task->pid == 1)
+        {
+            printf("handler: %p\n", handler);
+            printf("task: %d\n", task->pid);
+            printf("signal: %d\n", signal);
+            // scheduler();
+        }
         task->signals.handlers[signal] = handler;
     }
+    if (task->pid == 1)
+    {
+        // scheduler();
+        puts_color("Signal set\n", GREEN);
+    }
+
 }
 
 int _signal(int signal, signal_handler_t handler)
 {
-    printf("handler: %p\n", handler);
+    printf("handler: %d\n", signal);
     // printf("signal: %d\n", signal);
-    signal_task(get_current_task(), signal, handler);
+    // if (signal >= 0 && signal < MAX_SIGNALS)
+    // {
+    //     task_t *task = get_current_task();
+    //     task->signals.handlers[signal] = handler;
+    // }
     return 0;
 }
 
@@ -44,6 +58,7 @@ void unblock_signal(int signal)
 void handle_signals()
 {
     task_t *task = get_current_task();
+    // printf("Handling signals for PID %d, pending: %d\n", task->pid,task->signals.pending_signals);
     if (task->signals.pending_signals == 0)
     {
         return;

@@ -241,7 +241,6 @@ void task_1(void)
 {
     puts("Task 1 Started\n");
     printf("hndler: %p\n", task_1_sighandler);
-    signal(2, task_1_sighandler);
 
     puts("Task 1: Signal handler set\n");
     int i = 0;
@@ -255,7 +254,7 @@ void task_1(void)
         }
         // if (i % 1000 == 0)
         // {
-            scheduler();
+        scheduler();
         // }
     }
 }
