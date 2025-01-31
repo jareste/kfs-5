@@ -35,6 +35,7 @@ static void trigger_interrupt_software_0();
 static void trigger_interrupt_software_6();
 static void test_syscall();
 static void set_layout();
+static void ks_signal();
 
 static command_section_t command_sections[MAX_SECTIONS];
 
@@ -72,6 +73,7 @@ static command_t dcommand[] = {
 
 static command_t tcommand[] = {
     {"kill", "Kill a task", ks_kill},
+    {"signal", "Send a signal to a task", ks_signal},
     {NULL, NULL, NULL}
 };
 
@@ -167,6 +169,24 @@ static void ks_kill()
     signal = (int)hex_string_to_int(buffer);
     printf("Killing PID: %d with signal: %d\n", pid, signal);
     kill(pid, signal); /* this kill is the one wrapped into interrupt */
+}
+
+static void ks_signal()
+{
+    char* buffer;
+    pid_t pid;
+    int signum;
+
+    printf("Enter the PID to kill: ");
+    buffer = get_line();
+    pid = (pid_t)hex_string_to_int(buffer);
+    printf("Enter the signal to send: ");
+
+    buffer = get_line();
+
+    signum = (int)hex_string_to_int(buffer);
+    printf("signaling PID: %d with signal: %d\n", pid, signal);
+    signal(pid, signum); /* this kill is the one wrapped into interrupt */
 }
 
 static void color()

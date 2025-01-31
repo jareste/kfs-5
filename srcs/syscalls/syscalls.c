@@ -118,6 +118,12 @@ int sys_kill(uint32_t pid, uint32_t signal)
     return _kill(pid, signal);
 }
 
+int sys_signal(uint32_t pid, uint32_t signal)
+{
+    return _signal(pid, signal);
+}
+
+
 syscall_entry_t syscall_table[MAX_SYSCALLS] = {
   /*0*/  { .handler.handler_1 = (syscall_handler_1_t)sys_exit,       .num_args = 1, .ret_value_entry = RET_INT },
   /*1*/  { .handler.handler_3 = (syscall_handler_3_t)sys_write,      .num_args = 3, .ret_value_entry = RET_SIZE },
@@ -127,6 +133,7 @@ syscall_entry_t syscall_table[MAX_SYSCALLS] = {
   /*5*/  { .handler.handler_0 = (syscall_handler_0_t)sys_get_pid,    .num_args = 0, .ret_value_entry = RET_INT },
   /*6*/  { .handler.handler_1 = (syscall_handler_1_t)sys_sleep,      .num_args = 1, .ret_value_entry = RET_INT },
   /*7*/  { .handler.handler_2 = (syscall_handler_2_t)sys_kill,       .num_args = 2, .ret_value_entry = RET_INT },
+  /*8*/  { .handler.handler_2 = (syscall_handler_2_t)sys_signal,     .num_args = 2, .ret_value_entry = RET_INT },
 };
 
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)

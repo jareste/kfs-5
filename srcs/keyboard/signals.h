@@ -15,8 +15,9 @@ typedef struct
     uint32_t blocked_signals; /* 'flag' of blocked signals */
 } signal_context_t;
 
-int _signal(int signal, signal_handler_t handler);
+// int _signal(int signal, signal_handler_t handler);
 int _kill(pid_t pid, int signal);
+int _signal(pid_t pid, int signal);
 void handle_signals();
 void init_signals();
 
