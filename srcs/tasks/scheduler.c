@@ -285,26 +285,22 @@ void test_recursion(void)
     recursion();
 }
 
+#include "../syscall_wrappers/stdlib.h"
 void task_read()
 {
     while (1)
     {
         char buffer[10];
-        int return_value;
+        size_t return_value;
         // puts_color("TEST_READ\n", LIGHT_MAGENTA);
         // printf("Buffer before sys_read: %s\n", buffer);
 
-        asm volatile (
-            "mov $2, %%eax\n"
-            "mov $0, %%ebx\n"
-            "mov %1, %%ecx\n"
-            "mov %2, %%edx\n"
-            "int $0x80\n"
-            "mov %%eax, %0\n"
-            : "=r"(return_value)
-            : "r"(buffer), "r"(sizeof(buffer))
-            : "eax", "ebx", "ecx", "edx"
-        );
+
+        return_value = read(0, buffer, sizeof(buffer));
+        if (return_value <= 0)
+        {
+            puts_color("Error reading\n", RED);
+        }
 
         // printf("Buffer after sys_read: '");
         // for (size_t i = 0; i < 10; i++)
