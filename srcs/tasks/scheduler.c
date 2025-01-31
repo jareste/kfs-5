@@ -6,6 +6,7 @@
 #include "../keyboard/signals.h"
 #include "../gdt/gdt.h"
 #include "../kshell/kshell.h"
+#include "../syscall_wrappers/stdlib.h"
 
 #define STACK_SIZE 4096
 #define MAX_ACTIVE_TASKS 15
@@ -231,9 +232,18 @@ void task_1_exit()
     puts_color("Task 1 exited\n", RED);
 }
 
+void task_1_sighandler(int signal)
+{
+    puts_color("Task 1 received signal\n", RED);
+}
+
 void task_1(void)
 {
     puts("Task 1 Started\n");
+    printf("hndler: %p\n", task_1_sighandler);
+    signal(2, task_1_sighandler);
+
+    puts("Task 1: Signal handler set\n");
     int i = 0;
     while (1)
     {
@@ -285,7 +295,6 @@ void test_recursion(void)
     recursion();
 }
 
-#include "../syscall_wrappers/stdlib.h"
 void task_read()
 {
     while (1)

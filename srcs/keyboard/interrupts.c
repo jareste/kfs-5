@@ -25,6 +25,12 @@ void page_fault_handler(registers* regs, error_state* stack)
     uint32_t faulting_address;
     __asm__ __volatile__("mov %%cr2, %0" : "=r"(faulting_address));
 
+
+    task_t *task = get_current_task();
+    if (task)
+    {
+        printf("Task %d: ", task->pid);
+    }
     printf("Page fault at 0x");
     put_hex(faulting_address);
     putc('\n');

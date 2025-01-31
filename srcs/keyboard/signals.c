@@ -4,19 +4,23 @@
 #include "../tasks/task.h"
 #include "idt.h"
 
-/* TODO move it to each task as now we only have the 'core' */
-
 void signal_task(task_t* task, int signal, signal_handler_t handler)
 {
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
+        printf("handler: %p\n", handler);
+        printf("task: %d\n", task->pid);
+        printf("signal: %d\n", signal);
         task->signals.handlers[signal] = handler;
     }
 }
 
 int _signal(int signal, signal_handler_t handler)
 {
+    printf("handler: %p\n", handler);
+    // printf("signal: %d\n", signal);
     signal_task(get_current_task(), signal, handler);
+    return 0;
 }
 
 void block_signal(int signal)

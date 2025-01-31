@@ -124,15 +124,15 @@ int sys_signal(int signal, signal_handler_t handler)
 }
 
 syscall_entry_t syscall_table[MAX_SYSCALLS] = {
-    { .handler.handler_1 = (syscall_handler_1_t)sys_exit,       .num_args = 1, .ret_value_entry = RET_INT },
-    { .handler.handler_3 = (syscall_handler_3_t)sys_write,      .num_args = 3, .ret_value_entry = RET_SIZE },
-    { .handler.handler_3 = (syscall_handler_3_t)sys_read,       .num_args = 3, .ret_value_entry = RET_SIZE },
-    { .handler.handler_2 = (syscall_handler_2_t)sys_open,       .num_args = 2, .ret_value_entry = RET_INT },
-    { .handler.handler_1 = (syscall_handler_1_t)sys_close,      .num_args = 1, .ret_value_entry = RET_INT },
-    { .handler.handler_0 = (syscall_handler_0_t)sys_get_pid,    .num_args = 0, .ret_value_entry = RET_INT },
-    { .handler.handler_1 = (syscall_handler_1_t)sys_sleep,      .num_args = 1, .ret_value_entry = RET_INT },
-    { .handler.handler_2 = (syscall_handler_2_t)sys_kill,       .num_args = 2, .ret_value_entry = RET_INT },
-    { .handler.handler_2 = (syscall_handler_2_t)sys_signal,     .num_args = 2, .ret_value_entry = RET_INT },
+  /*0*/  { .handler.handler_1 = (syscall_handler_1_t)sys_exit,       .num_args = 1, .ret_value_entry = RET_INT },
+  /*1*/  { .handler.handler_3 = (syscall_handler_3_t)sys_write,      .num_args = 3, .ret_value_entry = RET_SIZE },
+  /*2*/  { .handler.handler_3 = (syscall_handler_3_t)sys_read,       .num_args = 3, .ret_value_entry = RET_SIZE },
+  /*3*/  { .handler.handler_2 = (syscall_handler_2_t)sys_open,       .num_args = 2, .ret_value_entry = RET_INT },
+  /*4*/  { .handler.handler_1 = (syscall_handler_1_t)sys_close,      .num_args = 1, .ret_value_entry = RET_INT },
+  /*5*/  { .handler.handler_0 = (syscall_handler_0_t)sys_get_pid,    .num_args = 0, .ret_value_entry = RET_INT },
+  /*6*/  { .handler.handler_1 = (syscall_handler_1_t)sys_sleep,      .num_args = 1, .ret_value_entry = RET_INT },
+  /*7*/  { .handler.handler_2 = (syscall_handler_2_t)sys_kill,       .num_args = 2, .ret_value_entry = RET_INT },
+  /*8*/  { .handler.handler_2 = (syscall_handler_2_t)sys_signal,     .num_args = 2, .ret_value_entry = RET_INT },
 };
 
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
