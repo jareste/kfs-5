@@ -37,6 +37,9 @@ void free_finished_tasks()
     kfree((void*)to_free->stack);
     kfree(to_free);
     to_free = NULL;
+    // enable_interrupts();
+    puts_color("Task freed\n", GREEN);
+    // printf("Task freed\n");
 }
 
 task_t* get_current_task()
@@ -77,6 +80,10 @@ void scheduler(void)
     *--stack = (uint32_t)handle_signals;
     next->cpu.esp_ = (uint32_t)stack;
     switch_context(prev, next);
+    // puts_color("Scheduler\n", LIGHT_MAGENTA);
+    /* think this should not be here maybe (?)*/
+    enable_interrupts();
+    outb(0x20, 0x20);
 }
 
 void add_new_task(task_t* new_task)
