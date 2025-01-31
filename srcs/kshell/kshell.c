@@ -3,6 +3,7 @@
 #include "../keyboard/signals.h"
 #include "../utils/utils.h"
 #include "../timers/timers.h"
+#include "../syscall_wrappers/stdlib.h"
 #include "kshell.h"
 
 #define MAX_COMMANDS 256
@@ -345,10 +346,12 @@ static void set_layout()
     puts("Available layouts:\n");
     puts("  0: QWERTY_ENG\n");
     puts("  1: QWERTY_ES\n");
+    puts("  2: AZERTY_FR\n");
+    puts("  3: QWERTZ_DE\n");
     puts("Enter the layout: ");
     buffer = get_line();
     layout = (uint32_t)hex_string_to_int(buffer);
-    if (layout < 0 || layout >= 2)
+    if (layout < 0 || layout >= MAX_KEYBOARD)
     {
         puts("Invalid layout\n");
         return;

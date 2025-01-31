@@ -5,7 +5,9 @@
 
 #define QWERTY_ENG 0
 #define QWERTY_ES 1
-#define MAX_KEYBOARD 2
+#define AZERTY_FR 2
+#define QWERTZ_DE 3
+#define MAX_KEYBOARD 4
 
 void keyboard_handler();
 
