@@ -8,10 +8,11 @@
 #include "../kshell/kshell.h"
 
 #define STACK_SIZE 4096
+#define MAX_ACTIVE_TASKS 15
 
 void kernel_main();
 void task_1(void);
-
+static void task_exit_pid(pid_t task_id);
 extern void switch_context(task_t *prev, task_t *next);
 void show_tasks();
 
@@ -24,21 +25,33 @@ task_t *current_task = NULL;
 task_t *task_list = NULL;
 pid_t task_index = 0;
 
+task_t* get_current_task()
+{
+    return current_task;
+}
+
+task_t* find_task(pid_t pid)
+{
+    task_t *current = task_list;
+    do
+    {
+        if (current->pid == pid)
+            return current;
+        current = current->next;
+    } while (current != task_list);
+    return NULL;
+}
+
 void scheduler(void)
 {
     if (!current_task) return;
     
     task_t *next = current_task->next;
-    // if (!next || next->state != TASK_READY)
-    // {
-    //     next = task_list;
-    // }
-    // printf("Switching task %d -> %d\n", current_task->pid, next->pid);
-    // printf("ESP: %p -> %p\n", current_task->cpu.esp_, next->cpu.esp_);
-    // printf("EIP: %p -> %p\n", current_task->cpu.eip, next->cpu.eip);
-    // printf("start_func: %p \n", task_1);
-    // printf("current: %p -> %p\n", current_task, next);
-    
+    if (next->state == TASK_TO_DIE)
+    {
+        task_exit_pid(next->pid);
+    }
+
     if (next->pid == 0)
     {
         next = next->next;
@@ -81,31 +94,44 @@ void add_new_task(task_t* new_task)
     }
 }
 
-void task_exit()
+static void task_exit_task(task_t* task)
 {
-    current_task->state = 3;
+    if (task->on_exit)
+        task->on_exit();
 
-    // Remove from task list
-    printf("Task %d exited\n", current_task->pid);
     task_t *prev = task_list;
-    while (prev->next != current_task)
+    while (prev->next != task)
         prev = prev->next;
 
-    prev->next = current_task->next; // Skip current task
+    prev->next = task->next;
 
-    kfree((void*)current_task->kernel_stack);
-    kfree(current_task);
+    kfree((void*)task->kernel_stack);
+    kfree((void*)current_task->stack);
+    kfree(task);
 
-    scheduler(); // Switch to another task
+    scheduler();
 }
 
+static void task_exit_pid(pid_t task_id)
+{
+    task_t *task = find_task(task_id);
 
-void create_task(void (*entry)(void), char* name)
+    task_exit_task(task);
+}
+
+/* Cb function to be called once a task returns
+*/
+static void task_exit()
+{
+    task_exit_task(current_task);
+}
+
+void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
 {
     task_t *task = kmalloc(sizeof(task_t));
     uint32_t *stack = kmalloc(STACK_SIZE);
     uint32_t *kernel_stack = kmalloc(STACK_SIZE);
-
+    task->stack = (uint32_t)stack; /* Point to the stack for being able to release it. */
     // Align stack and set up as if interrupted
     stack = (uint32_t*)((uint32_t)stack & 0xFFFFFFF0);
     stack += STACK_SIZE / sizeof(uint32_t);
@@ -125,6 +151,7 @@ void create_task(void (*entry)(void), char* name)
     task->kernel_stack = (uint32_t)kernel_stack;
     memcpy(task->name, name, strlen(name) > 15 ? 15 : strlen(name));
     task->name[strlen(name) > 15 ? 15 : strlen(name)] = '\0';
+    task->on_exit = on_exit;
     add_new_task(task);
     printf("Task %d created\n", task->pid);
 }
@@ -205,6 +232,11 @@ void task_1(void)
     }
 }
 
+void task_2_exit()
+{
+    puts_color("Task 2 exited\n", RED);
+}
+
 void task_2(void)
 {
     puts("Task 2 Started\n");
@@ -272,11 +304,11 @@ void task_read()
 void kshell();
 void start_foo_tasks(void)
 {
-    create_task(task_1, "task_1");
-    create_task(task_2, "task_2");
+    create_task(task_1, "task_1", NULL);
+    create_task(task_2, "task_2", task_2_exit);
     // create_task(task_write, "task_3");
-    create_task(task_read, "task_read");
-    create_task(kshell, "kshell");
+    create_task(task_read, "task_read", NULL);
+    create_task(kshell, "kshell", NULL);
     // create_task(test_recursion, "recursion");
 }
 

@@ -29,7 +29,7 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c \
 			io.c init_timers.c memory.c put_zu.c pmm.c memcpy.c memcmp.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
-			task.c scheduler.c
+			scheduler.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
 			  clear_registers.asm tasks.asm write.asm
@@ -83,7 +83,7 @@ run:
 	qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
 
 run_debug:
-	qemu-system-i386 -kernel $(BIN_NAME) -d int,cpu_reset -m 4096
+	qemu-system-i386 -kernel $(BIN_NAME) -d int,cpu_reset #-m 4096
 
 run_grub: build_iso
 	qemu-system-i386 -cdrom $(NAME)

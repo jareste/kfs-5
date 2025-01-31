@@ -1,46 +1,53 @@
 #include "signals.h"
 #include "../utils/utils.h"
 #include "../display/display.h"
+#include "../tasks/task.h"
 #include "idt.h"
 
 /* TODO move it to each task as now we only have the 'core' */
-signal_context_t kernel_signals;
 
-void signal(int signal, signal_handler_t handler)
+void signal_task(task_t* task, int signal, signal_handler_t handler)
 {
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        kernel_signals.handlers[signal] = handler;
+        task->signals.handlers[signal] = handler;
     }
+}
+
+void signal(int signal, signal_handler_t handler)
+{
+    signal_task(get_current_task(), signal, handler);
 }
 
 void block_signal(int signal)
 {
+    task_t *task = get_current_task();
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        kernel_signals.blocked_signals |= (1 << signal);
+        task->signals.blocked_signals |= (1 << signal);
     }
 }
 
 void unblock_signal(int signal)
 {
+    task_t *task = get_current_task();
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        kernel_signals.blocked_signals &= ~(1 << signal);
+        task->signals.blocked_signals &= ~(1 << signal);
     }
 }
 
-void handle_signals()
+void handle_signals(task_t* task)
 {
     for (int i = 0; i < MAX_SIGNALS; i++)
     {
-        if ((kernel_signals.pending_signals & (1 << i)) &&\
-         !(kernel_signals.blocked_signals & (1 << i)))
+        if ((task->signals.pending_signals & (1 << i)) &&\
+         !(task->signals.blocked_signals & (1 << i)))
         {
-            kernel_signals.pending_signals &= ~(1 << i);
-            if (kernel_signals.handlers[i])
+            task->signals.pending_signals &= ~(1 << i);
+            if (task->signals.handlers[i])
             {
-                kernel_signals.handlers[i](i);
+                task->signals.handlers[i](i);
             }
         }
     }
@@ -48,16 +55,22 @@ void handle_signals()
 
 void kill(pid_t pid, int signal)
 {
+    task_t *task = find_task(pid);
+    if (!task)
+    {
+        printf("Task with PID %d not found\n", pid);
+        return;
+    }
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        kernel_signals.pending_signals |= (1 << signal);
+        task->signals.pending_signals |= (1 << signal);
     }
-    handle_signals();
+    handle_signals(task);
 }
 
 static void signal_handler(int signal)
 {
-    printf("Signal %d received\n", signal);
+    // update_task_state(get_current_task(), TASK_READY);
 }
 
 static void panic_signal_handler(int signal)
@@ -66,18 +79,25 @@ static void panic_signal_handler(int signal)
     kernel_panic("Panic signal received");
 }
 
-void init_signals()
+void init_signals(task_t* task)
 {
     for (int i = 0; i < MAX_SIGNALS; i++)
     {
-        signal(i, signal_handler);
+        task->signals.handlers[i] = NULL;
     }
-    signal(0, panic_signal_handler);
-    signal(6, panic_signal_handler);
-    signal(14, panic_signal_handler);
+    task->signals.pending_signals = 0;
+    task->signals.blocked_signals = 0;
 
-    kernel_signals.pending_signals = 0;
-    kernel_signals.blocked_signals = 0;
+    for (int i = 0; i < MAX_SIGNALS; i++)
+    {
+        signal_task(task, i, signal_handler);
+    }
+    signal_task(task, 0, panic_signal_handler);
+    signal_task(task, 6, panic_signal_handler);
+    signal_task(task, 14, panic_signal_handler);
+
+    task->signals.pending_signals = 0;
+    task->signals.blocked_signals = 0;
 }
 
 /* This will come when i'll be having tasks. */
