@@ -34,7 +34,7 @@ int _signal(int signal, signal_handler_t handler)
     printf("signal: %d\n", signal);
     task_t *task = get_current_task();
     task->signals.handlers[signal] = handler;
-    return 0;
+    return 1;
 }
 
 void block_signal(int signal)
@@ -93,7 +93,7 @@ int _kill(pid_t pid, int signal)
     {
         task->signals.pending_signals |= (1 << signal);
     }
-    return 0;
+    return 1;
 }
 
 static void signal_handler(int signal)

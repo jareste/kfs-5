@@ -206,6 +206,7 @@ void task_write(void)
     puts("Task 3 Started\n");
     int i = 0;
     int return_value;
+    signal(2, task_exit);
     while (1)
     {
         i++;
@@ -217,18 +218,28 @@ void task_write(void)
         size_t msg_len = strlen(msg);
 
         // puts_color("TEST_WRITE\n", LIGHT_MAGENTA);
-        asm volatile (
-            "mov $1, %%eax\n"
-            "mov $1, %%ebx\n"
-            "mov %1, %%ecx\n"
-            "mov %2, %%edx\n"
-            "int $0x80\n"
-            "mov %%eax, %0\n"
-            : "=r"(return_value)
-            : "r"(msg), "r"(msg_len)
-            : "eax", "ebx", "ecx", "edx"
-        );
+        // asm volatile (
+        //     "mov $1, %%eax\n"
+        //     "mov $1, %%ebx\n"
+        //     "mov %1, %%ecx\n"
+        //     "mov %2, %%edx\n"
+        //     "int $0x80\n"
+        //     "mov %%eax, %0\n"
+        //     : "=r"(return_value)
+        //     : "r"(msg), "r"(msg_len)
+        //     : "eax", "ebx", "ecx", "edx"
+        // );
         // printf("SYS_WRITE return value: %d\n", return_value);
+        return_value = write(2, msg, msg_len);
+        if (return_value <= 0)
+        {
+            puts_color("Error writing\n", RED);
+            break;
+        }
+        else
+        {
+            printf("SYS_WRITE return value-------------: %d\n", return_value);
+        }
 
             scheduler();
         // }
@@ -239,8 +250,6 @@ void task_1_exit()
 {
     puts_color("Task 1 exited\n", RED);
 }
-
-
 
 void task_1(void)
 {
@@ -317,15 +326,15 @@ void task_read()
     {
         char buffer[10];
         size_t return_value;
-        // puts_color("TEST_READ\n", LIGHT_MAGENTA);
-        // printf("Buffer before sys_read: %s\n", buffer);
-
-
         return_value = read(0, buffer, sizeof(buffer));
         if (return_value <= 0)
         {
             puts_color("Error reading\n", RED);
         }
+        // else
+        // {
+        //     printf("SYS_READ return value: %d\n", return_value);
+        // }
 
         // printf("Buffer after sys_read: '");
         // for (size_t i = 0; i < 10; i++)
@@ -345,10 +354,9 @@ void start_foo_tasks(void)
 {
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_2, "task_2", task_2_exit);
-    // create_task(task_write, "task_3");
+    // create_task(task_write, "task_write", NULL); // floods CLI
     create_task(task_read, "task_read", NULL);
     create_task(kshell, "kshell", NULL);
-    // create_task(test_recursion, "recursion");
 }
 
 /* ################################################################### */

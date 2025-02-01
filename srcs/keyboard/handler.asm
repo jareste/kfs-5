@@ -1,4 +1,5 @@
 ; Defined in interrupts.c
+[BITS 32]
 [extern isr_handler]
 [extern irq_handler]
 [extern syscall_handler]
@@ -47,12 +48,16 @@ common_isr_handler:
 
 global syscall_handler_asm
 syscall_handler_asm:
+	push 0
+	push 0x80
     pusha
     call syscall_handler
     mov [esp + 28], eax
     popa
-	mov eax, 0x20
-	out 0x20, al
+	add esp, 8
+	; this shouldnt be here
+	; mov eax, 0x20
+	; out 0x20, al
     iret
 
 ; handles irqs (hardware interrupts)

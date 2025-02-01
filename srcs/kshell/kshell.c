@@ -36,6 +36,7 @@ static void trigger_interrupt_software_6();
 static void test_syscall();
 static void set_layout();
 static void ks_signal();
+static void ks_get_pid();
 
 static command_section_t command_sections[MAX_SECTIONS];
 
@@ -55,6 +56,7 @@ static command_t in_commands[] = {
     {"color", "Set shell color", color},
     {"uptime", "Get the system uptime in seconds.", kuptime},
     {"layout", "Set keyboard layout", set_layout},
+    {"mypid", "Get the PID of the current task", ks_get_pid},
     {NULL, NULL, NULL}
 };
 
@@ -404,6 +406,11 @@ static void trigger_interrupt_software_6()
     int j = 3;
     int i = 0;
     printf("Kernel end: %d\n", j / i);
+}
+
+static void ks_get_pid()
+{
+    printf("PID: %d\n", get_pid());
 }
 
 void test_syscall_read()

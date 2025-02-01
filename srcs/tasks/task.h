@@ -20,16 +20,12 @@ typedef struct task_struct
     task_state_t state;
     struct task_struct *parent;
     struct task_struct *next;
-    // uint32_t esp;       // Stack Pointer
-    // uint32_t eip;       // Instruction Pointer
-    // uint32_t ebx, ecx, edx, esi, edi, ebp;
-    // uint32_t eax;
-    // uint32_t eflags;
     uintptr_t kernel_stack; // Kernel Stack (for syscalls)
     uintptr_t stack;        // User Stack
     char name[16];
     void (*on_exit)(void);
     signal_context_t signals;
+    size_t owner;
     /* missing fields but untill it'll not work makes no sense to add them */    
 } task_t;
 

@@ -48,7 +48,7 @@ typedef struct
 int sys_exit(int status)
 {
     printf("Syscall: exit(%d)\n", status);
-    return 0;
+    return 1;
 }
 
 int sys_write(int fd, const char* buf, size_t count)
@@ -93,19 +93,18 @@ int sys_read(int fd, char* buf, size_t count)
 int sys_open(const char* path, int flags)
 {
     printf("Syscall: open(%s, %d)\n", path, flags);
-    return 0;
+    return 1;
 }
 
 int sys_close(int fd)
 {
     printf("Syscall: close(%d)\n", fd);
-    return 0;
+    return 1;
 }
 
 int sys_get_pid()
 {
-    printf("Syscall: getpid()\n");
-    return 0;
+    return get_current_task()->pid;
 }
 
 void sys_sleep(uint32_t seconds)
@@ -125,7 +124,7 @@ int sys_signal(uint32_t pid, signal_handler_t hand)
 
 syscall_entry_t syscall_table[MAX_SYSCALLS] = {
   /*0*/  { .handler.handler_1 = (syscall_handler_1_t)sys_exit,       .num_args = 1, .ret_value_entry = RET_INT },
-  /*1*/  { .handler.handler_3 = (syscall_handler_3_t)sys_write,      .num_args = 3, .ret_value_entry = RET_SIZE },
+  /*1*/  { .handler.handler_3 = (syscall_handler_3_t)sys_write,      .num_args = 3, .ret_value_entry = RET_INT },
   /*2*/  { .handler.handler_3 = (syscall_handler_3_t)sys_read,       .num_args = 3, .ret_value_entry = RET_SIZE },
   /*3*/  { .handler.handler_2 = (syscall_handler_2_t)sys_open,       .num_args = 2, .ret_value_entry = RET_INT },
   /*4*/  { .handler.handler_1 = (syscall_handler_1_t)sys_close,      .num_args = 1, .ret_value_entry = RET_INT },
@@ -165,7 +164,7 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
             ret_value.int_value = entry.handler.handler_1(arg1);
             break;
         case 2:
-            ret_value.int_value = entry.handler.handler_2(arg1, arg2);
+            ret_value.int_value = entry.handler.handler_2(reg.ebx, reg.ecx);
             break;
         case 3:
             ret_value.int_value = entry.handler.handler_3(arg1, arg2, arg3);
