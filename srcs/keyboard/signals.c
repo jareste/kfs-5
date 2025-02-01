@@ -44,6 +44,8 @@ void handle_signals()
 {
     task_t *task = get_current_task();
     // printf("Handling signals for PID %d, pending: %d\n", task->pid,task->signals.pending_signals);
+    // printf("pid: %d\n", task->pid);
+    // printf("Handling signals for PID %p\n", task->signals);
     if (task->signals.pending_signals == 0)
     {
         return;
@@ -60,6 +62,8 @@ void handle_signals()
             }
         }
     }
+    // enable_interrupts();
+    // outb(0x20, 0x20);
 }
 
 int _kill(pid_t pid, int signal)

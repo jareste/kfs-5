@@ -26,6 +26,7 @@ typedef struct task_struct
     task_state_t state;
     char name[16];
     void (*on_exit)(void);
+    void (*entry)(void);
     signal_context_t signals;
     size_t owner;
     void *mem_block;      // pointer to the big allocation

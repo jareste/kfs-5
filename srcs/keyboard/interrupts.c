@@ -59,7 +59,7 @@ void isr_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     UNUSED(err_code)
     UNUSED(intr_no)
 
-    printf("Interrupt SW number: %d\n", intr_no);
+    // printf("Interrupt SW number: %d\n", intr_no);
 
     if (intr_no == 14 || intr_no == 13)
     {

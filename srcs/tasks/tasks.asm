@@ -11,8 +11,8 @@ switch_context:
     mov [eax + 16], edi
     mov [eax + 20], ebp
     mov [eax + 24], esp
-    ; pushfd                 ; get the old EFLAGS into stack
-    ; pop dword [eax + 28]        ; store them in old_task->cpu.eflags (for example)
+    pushfd                 ; get the old EFLAGS into stack
+    pop dword [eax + 28]        ; store them in old_task->cpu.eflags (for example)
 
     ; Restore new task's registers
     mov eax, [esp + 8]   ; new_task pointer
@@ -23,8 +23,8 @@ switch_context:
     mov edi, [eax + 16]
     mov ebp, [eax + 20]
     mov esp, [eax + 24]
-    ; push dword [eax + 28]        ; restore new_task->cpu.eflags
-    ; popfd
+    push dword [eax + 28]        ; restore new_task->cpu.eflags
+    popfd
 
     ; .switch_to_new_task:
     ; jmp .switch_to_new_task
