@@ -195,6 +195,7 @@ void scheduler_init(void)
     current_task = idle;
     task_list = idle;
     to_free = NULL;
+    init_signals(idle);
     install_all_cmds(commands, TASKS);
 }
 
@@ -239,24 +240,32 @@ void task_1_exit()
     puts_color("Task 1 exited\n", RED);
 }
 
-void task_1_sighandler(int signal)
-{
-    puts_color("Task 1 received signal\n", RED);
-}
+
 
 void task_1(void)
 {
+    // signal(2, task_1_exit);
     puts("Task 1 Started\n");
-    printf("hndler: %p\n", task_1_sighandler);
+    // printf("hndler: %p\n", task_1_sighandler);
 
+    // scheduler();
+    // kill(2, 2);
+    // read(0, NULL, 0);
     puts("Task 1: Signal handler set\n");
     int i = 0;
+    bool flag;
+    flag = false;
+    i = 0;
+    printf("Task 1: %d\n", i);
     while (1)
     {
         i++;
         // puts_color("Task 1\n", i %128);
-        if (i == 1000)
+        if (i == 10000 && flag == false)
         {
+        printf("Task 1: %d\n", i);
+            flag = true;
+            // signal(2, task_1_exit);
             // create_task(task_3);
         }
         // if (i % 1000 == 0)
@@ -303,6 +312,7 @@ void test_recursion(void)
 
 void task_read()
 {
+    signal(2, task_exit);
     while (1)
     {
         char buffer[10];

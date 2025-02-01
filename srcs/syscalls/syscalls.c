@@ -118,11 +118,10 @@ int sys_kill(uint32_t pid, uint32_t signal)
     return _kill(pid, signal);
 }
 
-int sys_signal(uint32_t pid, uint32_t signal)
+int sys_signal(uint32_t pid, signal_handler_t hand)
 {
-    return _signal(pid, signal);
+    return _signal(pid, hand);
 }
-
 
 syscall_entry_t syscall_table[MAX_SYSCALLS] = {
   /*0*/  { .handler.handler_1 = (syscall_handler_1_t)sys_exit,       .num_args = 1, .ret_value_entry = RET_INT },

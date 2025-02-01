@@ -27,34 +27,13 @@ void signal_task(task_t* task, int signal, signal_handler_t handler)
 
 }
 
-// int _signal(int signal, signal_handler_t handler)
-int _signal(pid_t pid, int signal)
+// int _signal(pid_t pid, int signal)
+int _signal(int signal, signal_handler_t handler)
 {
-    printf("handler: %d\n", signal);
-    // printf("signal: %d\n", signal);
-    // if (signal >= 0 && signal < MAX_SIGNALS)
-    // {
-    //     task_t *task = get_current_task();
-    //     task->signals.handlers[signal] = handler;
-    // }
-
-    task_t *task = find_task(pid);
-    task->signals.handlers[signal] = signal_handler;
-    //     if (pid == 0)
-    // {
-    //     return -1;
-    // }
-    // task_t *task = find_task(pid);
-    // if (!task)
-    // {
-    //     printf("Task with PID %d not found\n", pid);
-    //     return -1;
-    // }
-    // if (signal >= 0 && signal < MAX_SIGNALS)
-    // {
-    //     task->signals.pending_signals |= (1 << signal);
-    // }
-    // return 0;
+    printf("handler: %p\n", handler);
+    printf("signal: %d\n", signal);
+    task_t *task = get_current_task();
+    task->signals.handlers[signal] = handler;
     return 0;
 }
 

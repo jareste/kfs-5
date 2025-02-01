@@ -171,6 +171,11 @@ static void ks_kill()
     kill(pid, signal); /* this kill is the one wrapped into interrupt */
 }
 
+static void task_1_sighandler(int signal)
+{
+    puts_color("Task 1 received signal\n", RED);
+}
+
 static void ks_signal()
 {
     char* buffer;
@@ -186,7 +191,7 @@ static void ks_signal()
 
     signum = (int)hex_string_to_int(buffer);
     printf("signaling PID: %d with signal: %d\n", pid, signal);
-    signal(pid, signum); /* this kill is the one wrapped into interrupt */
+    signal(pid, task_1_sighandler); /* this kill is the one wrapped into interrupt */
 }
 
 static void color()
