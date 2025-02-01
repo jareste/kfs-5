@@ -18,7 +18,7 @@ switch_context:
     mov eax, [esp + 8]   ; new_task pointer
     mov ebx, [eax + 0]
     mov ecx, [eax + 4]
-    mov edx, [eax + 8]
+    mov edx, [eax + 8]  
     mov esi, [eax + 12]
     mov edi, [eax + 16]
     mov ebp, [eax + 20]
@@ -32,6 +32,41 @@ switch_context:
     ; Return to new task's EIP (stored on its stack)
     ret
 
+global copy_context
+
+copy_context:
+    ; Copy old task's registers to new task's registers
+    mov eax, [esp + 4]   ; old_task pointer
+    mov ebx, [esp + 8]   ; new_task pointer
+
+    mov ecx, [eax + 0]   ; Copy EBX
+    mov [ebx + 0], ecx
+
+    mov ecx, [eax + 4]   ; Copy ECX
+    mov [ebx + 4], ecx
+
+    mov ecx, [eax + 8]   ; Copy EDX
+    mov [ebx + 8], ecx
+
+    mov ecx, [eax + 12]  ; Copy ESI
+    mov [ebx + 12], ecx
+
+    mov ecx, [eax + 16]  ; Copy EDI
+    mov [ebx + 16], ecx
+
+    mov ecx, [eax + 20]  ; Copy EBP
+    mov [ebx + 20], ecx
+
+    mov ecx, [eax + 24]  ; Copy ESP
+    mov [ebx + 24], ecx
+
+    ; Uncomment if you need to copy EFLAGS
+    ; mov ecx, [eax + 28]  ; Copy EFLAGS
+    ; mov [ebx + 28], ecx
+
+    ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits
 
 section .note.GNU-stack noalloc noexec nowrite progbits
 

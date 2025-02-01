@@ -17,6 +17,7 @@ void signal_task(task_t* task, int signal, signal_handler_t handler)
 int _signal(int signal, signal_handler_t handler)
 {
     task_t *task = get_current_task();
+    printf("SIGNAL################task: %p\n", task);
     task->signals.handlers[signal] = handler;
     return 1;
 }

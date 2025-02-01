@@ -17,6 +17,7 @@ void task_1_exit();
 static void task_exit_pid(pid_t task_id);
 static void task_exit_task(task_t* task);
 extern void switch_context(task_t *prev, task_t *next);
+extern void copy_context(task_t *prev, task_t *next);
 void show_tasks();
 
 static command_t commands[] = {
@@ -76,8 +77,12 @@ void scheduler(void)
     uint32_t *stack = (uint32_t*)next->cpu.esp_;
     *--stack = (uint32_t)handle_signals;
     next->cpu.esp_ = (uint32_t)stack;
-    switch_context(prev, next);
+    // if (next->pid == 5)
+    //     while(1);
+    
+    // printf("Current task: %d, %p\n", current_task->pid, next);
     // puts_color("Scheduler\n", LIGHT_MAGENTA);
+    switch_context(prev, next);
     /* think this should not be here maybe (?)*/
     enable_interrupts();
     outb(0x20, 0x20);
@@ -89,6 +94,7 @@ void add_new_task(task_t* new_task)
     {
         task_list = new_task;
         new_task->next = new_task;
+        current_task = task_list;
     }
     else
     {
@@ -100,6 +106,7 @@ void add_new_task(task_t* new_task)
         current->next = new_task;
         new_task->next = task_list;
     }
+    printf("Task %d added\n", new_task->pid);
 }
 
 static void task_exit_task(task_t* task)
@@ -140,33 +147,95 @@ void kill_task()
     // current_task->state = TASK_TO_DIE;
 }
 
-void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
+// void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
+// {
+//     task_t *task = kmalloc(sizeof(task_t));
+//     uint32_t *stack = kmalloc(STACK_SIZE);
+//     uint32_t *kernel_stack = kmalloc(STACK_SIZE);
+//     task->stack = (uint32_t)stack; /* Point to the stack for being able to release it. */
+//     // Align stack and set up as if interrupted
+//     stack = (uint32_t*)((uint32_t)stack & 0xFFFFFFF0);
+//     stack += STACK_SIZE / sizeof(uint32_t);
+
+//     kernel_stack = (uint32_t*)((uint32_t)kernel_stack & 0xFFFFFFF0);
+//     kernel_stack += STACK_SIZE / sizeof(uint32_t);
+
+//     // Simulate interrupt frame (EIP, EFLAGS, etc.)
+//     // *--stack = 0x202;   // EFLAGS (IF enabled)
+//     // *--stack = 0x08;    // CS (kernel code segment)
+//     *--stack = (uint32_t)task_exit; // EIP
+//     *--stack = (uint32_t)entry; // EIP
+
+//     task->pid = task_index++;
+//     task->cpu.esp_ = (uint32_t)stack; // Point to the simulated interrupt frame
+//     task->state = TASK_READY;
+//     task->kernel_stack = (uint32_t)kernel_stack;
+//     memcpy(task->name, name, strlen(name) > 15 ? 15 : strlen(name));
+//     task->name[strlen(name) > 15 ? 15 : strlen(name)] = '\0';
+//     task->on_exit = on_exit;
+//     init_signals(task);
+//     add_new_task(task);
+//     printf("Task %d created\n", task->pid);
+// }
+
+#define STACK_SIZE 4096
+
+void create_task(void (*entry)(void), const char *name, void (*on_exit)(void))
 {
-    task_t *task = kmalloc(sizeof(task_t));
-    uint32_t *stack = kmalloc(STACK_SIZE);
-    uint32_t *kernel_stack = kmalloc(STACK_SIZE);
-    task->stack = (uint32_t)stack; /* Point to the stack for being able to release it. */
-    // Align stack and set up as if interrupted
-    stack = (uint32_t*)((uint32_t)stack & 0xFFFFFFF0);
-    stack += STACK_SIZE / sizeof(uint32_t);
+    // Allocate one contiguous block: task_t + 2 stacks + alignment
+    size_t total_size = sizeof(task_t) + (2 * STACK_SIZE) + 16;
+    uint8_t *block = kmalloc(total_size);
+    if (!block)
+    {
+        printf("Allocation error in create_task\n");
+        return;
+    }
 
-    kernel_stack = (uint32_t*)((uint32_t)kernel_stack & 0xFFFFFFF0);
-    kernel_stack += STACK_SIZE / sizeof(uint32_t);
+    // Zero the block for safety
+    memset(block, 0, total_size);
 
-    // Simulate interrupt frame (EIP, EFLAGS, etc.)
-    // *--stack = 0x202;   // EFLAGS (IF enabled)
-    // *--stack = 0x08;    // CS (kernel code segment)
-    *--stack = (uint32_t)task_exit; // EIP
-    *--stack = (uint32_t)entry; // EIP
+    // Task points to start of the block
+    task_t *task = (task_t *)block;
+    task->mem_block = block;
+    task->block_size = total_size;
 
-    task->pid = task_index++;
-    task->cpu.esp_ = (uint32_t)stack; // Point to the simulated interrupt frame
-    task->state = TASK_READY;
-    task->kernel_stack = (uint32_t)kernel_stack;
-    memcpy(task->name, name, strlen(name) > 15 ? 15 : strlen(name));
-    task->name[strlen(name) > 15 ? 15 : strlen(name)] = '\0';
+    // Calculate aligned base for the two stacks
+    uint8_t *ptr = block + sizeof(task_t);
+    uintptr_t aligned_addr = ((uintptr_t)ptr + 15) & ~((uintptr_t)15);
+    uint8_t *stacks_base = (uint8_t *)aligned_addr;
+
+    // The first STACK_SIZE bytes is the user (or normal) stack
+    uint8_t *user_stack_base = stacks_base;
+    uint32_t *user_stack_top = (uint32_t *)(user_stack_base + STACK_SIZE);
+
+    // The second STACK_SIZE bytes is the kernel stack
+    uint8_t *kernel_stack_base = stacks_base + STACK_SIZE;
+    uint32_t *kernel_stack_top = (uint32_t *)(kernel_stack_base + STACK_SIZE);
+
+    // Fill in task fields
+    task->pid          = task_index++;
+    task->state        = TASK_READY;
+    task->stack        = (uint32_t)user_stack_base;   // base of user stack
+    task->kernel_stack = (uint32_t)kernel_stack_top;  // top of kernel stack
+
+    // Copy in the name (up to 15 chars + null)
+    memcpy(task->name, name, 15);
+    task->name[15] = '\0';
+
     task->on_exit = on_exit;
     init_signals(task);
+
+    // Build the initial stack frame on the user stack (just two return addresses).
+    // Order: when the function 'entry()' returns, it jumps to 'task_exit()'.
+    //        So the top of the stack is `entry`, below that is `task_exit`.
+    uint32_t *sim_stack = user_stack_top;
+    *--sim_stack = (uint32_t)task_exit; // Return from 'entry' => goto 'task_exit'
+    *--sim_stack = (uint32_t)entry;     // The code "starts" at 'entry'
+
+    // Now esp points at 'entry' in the stack
+    task->cpu.esp_ = (uint32_t)sim_stack;
+
+    // Add the new task to the linked list and announce
     add_new_task(task);
     printf("Task %d created\n", task->pid);
 }
@@ -304,21 +373,24 @@ void test_recursion(void)
 
 void task_read()
 {
-    signal(2, task_exit);
+    _signal(2, task_exit);
+    printf("Task 4 Started\n");
+    // _fork();
     while (1)
     {
         char buffer[10];
         size_t return_value;
+        // puts_color("Task 4\n", GREEN);
         return_value = read(0, buffer, sizeof(buffer));
         if (return_value <= 0)
         {
             puts_color("Error reading\n", RED);
         }
+        // puts("Buffer after sys_read: '");
         // else
         // {
         //     printf("SYS_READ return value: %d\n", return_value);
         // }
-
         // printf("Buffer after sys_read: '");
         // for (size_t i = 0; i < 10; i++)
         // {
@@ -340,6 +412,8 @@ void start_foo_tasks(void)
     create_task(task_2, "task_2", task_2_exit);
     // create_task(task_write, "task_write", NULL); // floods CLI
     create_task(task_read, "task_read", NULL);
+    to_free = NULL;
+    printf("current_task: %p\n", current_task);
 }
 
 /* ################################################################### */
