@@ -199,6 +199,84 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     printf("Task %d created\n", task->pid);
 }
 
+// int _fork(void)
+// {
+//     if (task_index >= MAX_ACTIVE_TASKS)
+//     {
+//         puts_color("Max number of tasks reached\n", RED);
+//         return -1;
+//     }
+//     task_t *parent = current_task;
+    
+//     task_t *child = kmalloc(sizeof(task_t));
+//     if (!child)
+//         return -1;  // handle allocation failure as needed
+
+
+//     uint32_t *child_stack_alloc = kmalloc(STACK_SIZE);
+//     if (!child_stack_alloc)
+//         return -1;  // error handling
+
+//     /* Copy the entire stack memory.  
+//      * (Using a scan for 0xFFFFFFFF isn’t safe since valid data might equal that.)
+//      */
+//     // memcpy(child_stack_alloc, parent_stack_alloc, STACK_SIZE);
+//     memset(child_stack_alloc, 0xFF, STACK_SIZE);
+
+
+//     child->stack = (uint32_t)child_stack_alloc;
+//     child_stack_alloc = (uint32_t*)((uint32_t)child_stack_alloc & 0xFFFFFFF0);
+//     child_stack_alloc += STACK_SIZE / sizeof(uint32_t);
+
+//     *--child_stack_alloc = (uint32_t)task_exit;
+//     *--child_stack_alloc = (uint32_t)parent->entry;
+
+//     uint32_t *child_kstack_alloc = kmalloc(STACK_SIZE);
+//     if (!child_kstack_alloc)
+//         return -1;
+
+//     child_kstack_alloc = (uint32_t*)((uint32_t)child_kstack_alloc & 0xFFFFFFF0);
+//     child_kstack_alloc += STACK_SIZE / sizeof(uint32_t);
+
+//     child->kernel_stack = (uint32_t)child_kstack_alloc;
+//     child->pid = task_index++;
+
+//     child->cpu.esp_ = (uint32_t)child_stack_alloc;
+//     child->state = TASK_READY;
+//     memcpy(child->name, parent->name, 15);
+//     child->name[15] = '\0';
+//     child->on_exit = parent->on_exit;
+//     child->entry = parent->entry;
+//     init_signals(child);
+
+
+//     add_new_task(child);
+//     printf("Forked new task: child pid %d, parent pid %d\n", child->pid, parent->pid);
+//     printf("Child task: %p\n", child);
+
+//     /* 
+//      * In the parent, fork() returns the child's PID.
+//      * (The parent's saved state is unchanged so that when it resumes the fork call
+//      *  will see the child PID in its return value, typically placed in eax by the system call wrapper.)
+//      */
+//     return child->pid;
+// }
+
+
+extern void fork_trampoline(void);  // declared in an assembly file
+
+#include "../utils/stdint.h"
+// (other includes …)
+
+// Declare the trampoline (its symbol will be resolved at link time)
+extern void fork_trampoline(void);
+
+#include "../utils/stdint.h"
+// (Other includes as needed…)
+
+extern void fork_trampoline(void);  // from our assembly file
+extern void capture_cpu_state(cpu_state_t *state);
+
 int _fork(void)
 {
     if (task_index >= MAX_ACTIVE_TASKS)
@@ -206,42 +284,110 @@ int _fork(void)
         puts_color("Max number of tasks reached\n", RED);
         return -1;
     }
+
     task_t *parent = current_task;
-    
     task_t *child = kmalloc(sizeof(task_t));
     if (!child)
-        return -1;  // handle allocation failure as needed
+        return -1;  // allocation failure
 
 
-    uint32_t *child_stack_alloc = kmalloc(STACK_SIZE);
-    if (!child_stack_alloc)
-        return -1;  // error handling
+    // In _fork():
+    capture_cpu_state(&current_task->cpu);
 
-    /* Copy the entire stack memory.  
-     * (Using a scan for 0xFFFFFFFF isn’t safe since valid data might equal that.)
+     /*
+     * Determine the parent's aligned stack top.
+     * (This must match the way create_task() computes it.)
      */
-    // memcpy(child_stack_alloc, parent_stack_alloc, STACK_SIZE);
-    memset(child_stack_alloc, 0xFF, STACK_SIZE);
+    uint32_t *parent_raw_stack = (uint32_t *)parent->stack;
+    uint32_t *parent_stack_top = (uint32_t *)((uint32_t)parent_raw_stack & 0xFFFFFFF0);
+    uint32_t live_esp = parent->cpu.esp_;
+    parent_stack_top += STACK_SIZE / sizeof(uint32_t);
 
+    /* Calculate the used portion of the parent's stack in bytes.
+       (Stack grows downward so: used_bytes = parent_stack_top - live_esp) */
+    size_t used_bytes = (uint32_t)parent_stack_top - live_esp;
 
-    child->stack = (uint32_t)child_stack_alloc;
-    child_stack_alloc = (uint32_t*)((uint32_t)child_stack_alloc & 0xFFFFFFF0);
-    child_stack_alloc += STACK_SIZE / sizeof(uint32_t);
+    /*
+     * Allocate and align a new user stack for the child.
+     */
+    uint32_t *child_raw_stack = kmalloc(STACK_SIZE);
+    if (!child_raw_stack)
+        return -1;
+    child->stack = (uint32_t)child_raw_stack;
+    uint32_t *child_stack_top = (uint32_t *)((uint32_t)child_raw_stack & 0xFFFFFFF0);
+    child_stack_top += STACK_SIZE / sizeof(uint32_t);
 
-    *--child_stack_alloc = (uint32_t)task_exit; // Return address
-    *--child_stack_alloc = (uint32_t)parent->entry; // EIP
+    /*
+     * Compute the child's new ESP so that the same amount of stack is used.
+     * That is, if parent's ESP is X bytes below parent's top,
+     * then child's ESP = child_stack_top - used_bytes.
+     */
+    uint32_t *child_cpu_esp = (uint32_t *)((uint32_t)child_stack_top - used_bytes);
+    memcpy(child_cpu_esp, (void*)live_esp, used_bytes);
 
+    /* 
+     * Copy parent's CPU state into the child.
+     * (We use memcpy so that all fields are copied.)
+     */
+    memcpy(&child->cpu, &parent->cpu, sizeof(cpu_state_t));
+    child->cpu.esp_ = (uint32_t)child_cpu_esp;
+
+    /* --- Adjust the frame pointer (EBP) chain in the copied stack --- */
+    {
+        uintptr_t parent_top_addr = (uintptr_t)parent_stack_top;
+        uintptr_t child_top_addr  = (uintptr_t)child_stack_top;
+        uintptr_t delta = child_top_addr - parent_top_addr;
+
+        if (child->cpu.ebp >= live_esp && child->cpu.ebp < parent_top_addr)
+        {
+            child->cpu.ebp += delta;
+            uint32_t *cur_ebp = (uint32_t *)child->cpu.ebp;
+            while(cur_ebp &&
+                  ((uintptr_t)cur_ebp >= (uintptr_t)child_cpu_esp) &&
+                  ((uintptr_t)cur_ebp < child_top_addr))
+            {
+                uint32_t saved_ebp = *cur_ebp;
+                if (saved_ebp >= live_esp && saved_ebp < parent_top_addr)
+                {
+                    uint32_t new_val = saved_ebp + delta;
+                    *cur_ebp = new_val;
+                    cur_ebp = (uint32_t *)new_val;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+    /* --- End EBP fix-up --- */
+
+    /*
+     * Insert a trampoline address on the child's stack.
+     *
+     * When the child is scheduled, the context switch will load its ESP
+     * from child->cpu.esp_. A subsequent "ret" will pop the trampoline address,
+     * jump to fork_trampoline (which sets EAX to 0), and then "ret" to the
+     * original return address copied from the parent's live stack.
+     */
+    uint32_t *child_sp = (uint32_t *)child->cpu.esp_;
+    child_sp--;  // reserve space for the trampoline address
+    *child_sp = (uint32_t)fork_trampoline;
+    child->cpu.esp_ = (uint32_t)child_sp;
+
+    /*
+     * Allocate a new kernel stack for the child.
+     * (Here we simply allocate a fresh kernel stack rather than copying the parent's.)
+     */
     uint32_t *child_kstack_alloc = kmalloc(STACK_SIZE);
     if (!child_kstack_alloc)
-        return -1;  // error handling
+        return -1;
+    uint32_t *child_kstack_top = (uint32_t *)((uint32_t)child_kstack_alloc & 0xFFFFFFF0);
+    child_kstack_top += STACK_SIZE / sizeof(uint32_t);
+    child->kernel_stack = (uint32_t)child_kstack_top;
 
-    child_kstack_alloc = (uint32_t*)((uint32_t)child_kstack_alloc & 0xFFFFFFF0);
-    child_kstack_alloc += STACK_SIZE / sizeof(uint32_t);
-
-    child->kernel_stack = (uint32_t)child_kstack_alloc;
+    /* Set up the remainder of the child's task structure. */
     child->pid = task_index++;
-
-    child->cpu.esp_ = (uint32_t)child_stack_alloc;
     child->state = TASK_READY;
     memcpy(child->name, parent->name, 15);
     child->name[15] = '\0';
@@ -249,18 +395,20 @@ int _fork(void)
     child->entry = parent->entry;
     init_signals(child);
 
-
     add_new_task(child);
     printf("Forked new task: child pid %d, parent pid %d\n", child->pid, parent->pid);
-    printf("Child task: %p\n", child);
-
-    /* 
-     * In the parent, fork() returns the child's PID.
-     * (The parent's saved state is unchanged so that when it resumes the fork call
-     *  will see the child PID in its return value, typically placed in eax by the system call wrapper.)
-     */
     return child->pid;
 }
+
+// int fork_wrapper(void)
+// {
+//     capture_cpu_state(&current_task->cpu);
+//     int pid = _fork();
+//     if (pid > 0)
+//     return pid;
+// }
+
+
 
 
 
@@ -455,9 +603,9 @@ void task_read()
     _signal(2, task_exit);
     printf("Task 4 Started\n");
     int i;
-
+// scheduler();
     i = _fork();
-    // printf("Forked: %d\n", i);
+    printf("Forked: %d\n", i);
     while (1)
     {
         char buffer[10];
