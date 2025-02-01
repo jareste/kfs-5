@@ -346,144 +346,144 @@ size_t ksize(void* ptr)
 /*                                                                            */
 /*############################################################################*/
 
-void* vmalloc(size_t size, int is_user)
-{
-    /* Round up payload size and add header */
-    size_t aligned_size = ALIGN_4K(size);
-    size_t total_size = ALIGN_4K(aligned_size + sizeof(vblock_header_t));
-
-    vblock_header_t* current = vblock_list;
-    vblock_header_t* prev = NULL;
-    while (current)
-    {
-        if (current->free && current->size >= total_size)
-        {
-            current->free = 0;
-            current->is_user = is_user;
-            /* Split block if possible */
-            if (current->size > total_size + sizeof(vblock_header_t) + PAGE_SIZE)
-            {
-                vblock_header_t* new_block = (vblock_header_t*)((uintptr_t)current + total_size);
-                new_block->size = current->size - total_size;
-                new_block->free = 1;
-                new_block->next = current->next;
-                new_block->is_user = 0;
-                current->size = total_size;
-                current->next = new_block;
-            }
-            return (void*)((uintptr_t)current + sizeof(vblock_header_t));
-        }
-        prev = current;
-        current = current->next;
-    }
-
-    uintptr_t old_brk = (uintptr_t)vmalloc_brk;
-    uintptr_t new_brk = old_brk + total_size;
-    if (new_brk > VMALLOC_START + VMALLOC_SIZE)
-    {
-        puts_color("vmalloc: Out of vmalloc space!\n", RED);
-        return NULL;
-    }
-
-    /* Map each page in the new region */
-    for (uintptr_t addr = old_brk; addr < new_brk; addr += PAGE_SIZE)
-    {
-        uint32_t phys_frame = allocate_frame();
-        if (!phys_frame)
-        {
-            puts_color("vmalloc: Out of physical frames!\n", RED);
-            return NULL;
-        }
-        uint32_t flags = PAGE_PRESENT | PAGE_RW;
-        if (is_user)
-            flags |= PAGE_USER;
-        map_page(addr, phys_frame, flags);
-    }
-    vmalloc_brk = (void*)new_brk;
-
-    /* Create the new block header */
-    vblock_header_t* new_block = (vblock_header_t*)old_brk;
-    new_block->size = total_size;
-    new_block->free = 0;
-    new_block->next = NULL;
-    new_block->is_user = is_user;
-
-    if (prev)
-        prev->next = new_block;
-    else
-        vblock_list = new_block;
-
-    return (void*)((uintptr_t)new_block + sizeof(vblock_header_t));
-}
-
 // void* vmalloc(size_t size, int is_user)
 // {
-//     size = ALIGN_8(size);
+//     /* Round up payload size and add header */
+//     size_t aligned_size = ALIGN_4K(size);
+//     size_t total_size = ALIGN_4K(aligned_size + sizeof(vblock_header_t));
 
 //     vblock_header_t* current = vblock_list;
 //     vblock_header_t* prev = NULL;
-
 //     while (current)
 //     {
-//         if (current->free && current->size >= size)
+//         if (current->free && current->size >= total_size)
 //         {
 //             current->free = 0;
 //             current->is_user = is_user;
-
-//             if (current->size > size + sizeof(vblock_header_t))
+//             /* Split block if possible */
+//             if (current->size > total_size + sizeof(vblock_header_t) + PAGE_SIZE)
 //             {
-//                 vblock_header_t* new_block = (vblock_header_t*)ALIGN_8((uintptr_t)current + sizeof(vblock_header_t) + size);
-//                 new_block->size = current->size - size - sizeof(vblock_header_t);
+//                 vblock_header_t* new_block = (vblock_header_t*)((uintptr_t)current + total_size);
+//                 new_block->size = current->size - total_size;
 //                 new_block->free = 1;
 //                 new_block->next = current->next;
-//                 new_block->is_user = is_user;
-
-//                 current->size = size;
+//                 new_block->is_user = 0;
+//                 current->size = total_size;
 //                 current->next = new_block;
 //             }
-
-//             void* allocated_mem = (char*)current + sizeof(vblock_header_t);
-//             return allocated_mem;
+//             return (void*)((uintptr_t)current + sizeof(vblock_header_t));
 //         }
-
 //         prev = current;
 //         current = current->next;
 //     }
 
-//     uintptr_t old_end = (uintptr_t)heap_end;
-//     size_t new_size = size + sizeof(vblock_header_t);
-//     uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
-
-//     if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
+//     uintptr_t old_brk = (uintptr_t)vmalloc_brk;
+//     uintptr_t new_brk = old_brk + total_size;
+//     if (new_brk > VMALLOC_START + VMALLOC_SIZE)
 //     {
-//         puts_color("vmalloc: Out of memory (heap expansion)!\n", RED);
+//         puts_color("vmalloc: Out of vmalloc space!\n", RED);
 //         return NULL;
 //     }
 
-//     if (kbrk((void*)new_heap_end) == (void*)-1)
+//     /* Map each page in the new region */
+//     for (uintptr_t addr = old_brk; addr < new_brk; addr += PAGE_SIZE)
 //     {
-//         puts_color("vmalloc: Failed to expand heap!\n", RED);
-//         return NULL;
+//         uint32_t phys_frame = allocate_frame();
+//         if (!phys_frame)
+//         {
+//             puts_color("vmalloc: Out of physical frames!\n", RED);
+//             return NULL;
+//         }
+//         uint32_t flags = PAGE_PRESENT | PAGE_RW;
+//         if (is_user)
+//             flags |= PAGE_USER;
+//         map_page(addr, phys_frame, flags);
 //     }
+//     vmalloc_brk = (void*)new_brk;
 
-//     vblock_header_t* new_block = (vblock_header_t*)old_end;
-//     new_block->size = size;
+//     /* Create the new block header */
+//     vblock_header_t* new_block = (vblock_header_t*)old_brk;
+//     new_block->size = total_size;
 //     new_block->free = 0;
 //     new_block->next = NULL;
 //     new_block->is_user = is_user;
 
 //     if (prev)
-//     {
 //         prev->next = new_block;
-//     }
 //     else
-//     {
 //         vblock_list = new_block;
-//     }
 
-//     void* allocated_mem = (char*)new_block + sizeof(vblock_header_t);
-//     return allocated_mem;
+//     return (void*)((uintptr_t)new_block + sizeof(vblock_header_t));
 // }
+
+void* vmalloc(size_t size, int is_user)
+{
+    size = ALIGN_8(size);
+
+    vblock_header_t* current = vblock_list;
+    vblock_header_t* prev = NULL;
+
+    while (current)
+    {
+        if (current->free && current->size >= size)
+        {
+            current->free = 0;
+            current->is_user = is_user;
+
+            if (current->size > size + sizeof(vblock_header_t))
+            {
+                vblock_header_t* new_block = (vblock_header_t*)ALIGN_8((uintptr_t)current + sizeof(vblock_header_t) + size);
+                new_block->size = current->size - size - sizeof(vblock_header_t);
+                new_block->free = 1;
+                new_block->next = current->next;
+                new_block->is_user = is_user;
+
+                current->size = size;
+                current->next = new_block;
+            }
+
+            void* allocated_mem = (char*)current + sizeof(vblock_header_t);
+            return allocated_mem;
+        }
+
+        prev = current;
+        current = current->next;
+    }
+
+    uintptr_t old_end = (uintptr_t)heap_end;
+    size_t new_size = size + sizeof(vblock_header_t);
+    uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
+
+    if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
+    {
+        puts_color("vmalloc: Out of memory (heap expansion)!\n", RED);
+        return NULL;
+    }
+
+    if (kbrk((void*)new_heap_end) == (void*)-1)
+    {
+        puts_color("vmalloc: Failed to expand heap!\n", RED);
+        return NULL;
+    }
+
+    vblock_header_t* new_block = (vblock_header_t*)old_end;
+    new_block->size = size;
+    new_block->free = 0;
+    new_block->next = NULL;
+    new_block->is_user = is_user;
+
+    if (prev)
+    {
+        prev->next = new_block;
+    }
+    else
+    {
+        vblock_list = new_block;
+    }
+
+    void* allocated_mem = (char*)new_block + sizeof(vblock_header_t);
+    return allocated_mem;
+}
 
 void vfree(void* ptr)
 {
