@@ -14,16 +14,21 @@ extern uint32_t endkernel;
 /*############################################################################*/
 // #define HEAP_START ((uintptr_t)&endkernel + 0x4000) // Start heap 4 KB after kernel
 #define HEAP_START (ALIGN_4K((uintptr_t)&endkernel + 0x4000))
-
 #define HEAP_SIZE_  0x100000  /* 1 MB heap size */
 #define ALIGN_4K(x)  (((x) + 0xFFF) & ~0xFFF) /* 4 KB alignment */
-#define ALIGN_8(x) (((x) + 0x7) & ~0x7) /* 8-byte alignment */
-#define MAX_HEAP_SIZE (4 * 1024 * 1024) /* Allow up to 64MB */
+#define ALIGN_8(x)   (((x) + 0x7)   & ~0x7)   /* 8-byte alignment */
+/* Maximum allowed heap expansion */
+#define MAX_HEAP_SIZE (4 * 1024 * 1024) /* 4 MB */
+
+/* 
+ * Reserve a separate virtual region for vmalloc (immediately after the kernel heap).
+ */
+#define VMALLOC_START (ALIGN_4K((uintptr_t)HEAP_START + MAX_HEAP_SIZE))
+#define VMALLOC_SIZE  (16 * 1024 * 1024)   /* 16 MB vmalloc region */
 
 #define PAGE_PRESENT  0x1
 #define PAGE_RW       0x2
 #define PAGE_USER     0x4
-
 
 #define KERNEL_PDE_FLAGS  (PAGE_PRESENT | PAGE_RW)
 #define KERNEL_PTE_FLAGS  (PAGE_PRESENT | PAGE_RW)
@@ -72,12 +77,16 @@ void dump_page_directory();
 /*############################################################################*/
 static page_directory_t page_directory __attribute__((aligned(PAGE_SIZE)));
 
+/* Heap for kmalloc */
 static block_header_t* free_list = NULL;
 static block_header_t* heap_started;
 static void* heap_end;
 static size_t HEAP_SIZE;
 
+/* A separate free list for vmalloc blocks */
 static vblock_header_t* vblock_list = NULL;
+/* Bump pointer for new vmalloc mappings */
+static void* vmalloc_brk;
 
 static command_t commands[] = {
     {"f pfw", "Force a page fault by writing to an unmapped address", m_force_page_fault_write},
@@ -100,81 +109,76 @@ static command_t commands[] = {
 /*                                                                            */
 /*############################################################################*/
 
+static void map_page(uintptr_t virt_addr, uint32_t phys_addr, uint32_t flags)
+{
+    uint32_t pd_index = virt_addr >> 22;
+    uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
+
+    if (!(page_directory[pd_index] & PAGE_PRESENT)) {
+        uint32_t pt_frame = allocate_frame();
+        if (!pt_frame)
+            kernel_panic("map_page: Out of frames for PDE!\n");
+
+        memset((void*)pt_frame, 0, PAGE_SIZE);
+        /* Pass along the PAGE_USER flag if needed */
+        uint32_t pde_flags = (pt_frame & ~0xFFF) | (flags & PAGE_USER) | PAGE_PRESENT | PAGE_RW;
+        page_directory[pd_index] = pde_flags;
+    }
+
+    page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
+    (*pt)[pt_index] = (phys_addr & ~0xFFF) | (flags & 0xFFF);
+
+    /* Flush TLB for this page */
+    asm volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
+}
+
 void paging_init()
 {
     pmm_init();
-
     memset(page_directory, 0, sizeof(page_directory));
 
-    /* Map from 0 to 64 MB, each loop will map 4 KB 
-     * Each PDE covers 4 MB, so we need up to PDE index = 15 to cover 64 MB.
-     */
-
-    const uint32_t IDENTITY_LIMIT = MB(64);// * 1024 * 1024; // 64 MB
+    /* Identity-map the first 64MB (4KB per mapping) */
+    const uint32_t IDENTITY_LIMIT = MB(64);
     for (uintptr_t addr = 0; addr < IDENTITY_LIMIT; addr += 0x1000)
     {
-        uint32_t pd_index = addr >> 22;        
-        uint32_t pt_index = (addr >> 12) & 0x3FF; 
+        uint32_t pd_index = addr >> 22;
+        uint32_t pt_index = (addr >> 12) & 0x3FF;
 
         if (!(page_directory[pd_index] & PAGE_PRESENT))
         {
             uint32_t pt_phys = allocate_frame();
             if (!pt_phys) kernel_panic("paging_init: out of frames for PDE\n");
 
-            memset((void*)pt_phys, 0, PAGE_SIZE); 
-
-            page_directory[pd_index] = (pt_phys & ~0xFFF) | (PAGE_PRESENT|PAGE_RW);
+            memset((void*)pt_phys, 0, PAGE_SIZE);
+            page_directory[pd_index] = (pt_phys & ~0xFFF) | (PAGE_PRESENT | PAGE_RW);
         }
 
         page_table_t* table = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-        (*table)[pt_index] = (addr & ~0xFFF) | (PAGE_PRESENT|PAGE_RW);
+        (*table)[pt_index] = (addr & ~0xFFF) | (PAGE_PRESENT | PAGE_RW);
     }
 
     asm volatile("mov %0, %%cr3" :: "r"(page_directory));
 
-    // free_list = (block_header_t*)page_directory[0];
-    /* Enable paging */
+    /* Enable paging (set PG bit in CR0) */
     uint32_t cr0;
     asm volatile("mov %%cr0, %0" : "=r"(cr0));
-    cr0 |= 0x80000000; 
+    cr0 |= 0x80000000;
     asm volatile("mov %0, %%cr0" :: "r"(cr0));
 }
 
 void heap_init()
 {
+    /* Initialize kmalloc heap */
     heap_end = (void*)ALIGN_4K((uintptr_t)HEAP_START);
     free_list = NULL;
+    heap_started = NULL;
+
+    /* Initialize vmalloc arena */
+    vmalloc_brk = (void*)VMALLOC_START;
+    vblock_list = NULL;
+
     install_all_cmds(commands, MEMORY);
 }
-
-/* Not using them now but might become usefull in future. */
-// static void map_page(uintptr_t virt_addr, uint32_t phys_addr, uint32_t flags)
-// {
-//     uint32_t pd_index = virt_addr >> 22;
-//     uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
-
-//     if (!(page_directory[pd_index] & PAGE_PRESENT))
-//     {
-//         uint32_t pt_frame = allocate_frame();
-//         if (!pt_frame)
-//             kernel_panic("Out of frames for PDE!\n");
-
-//         /* PDE flags: take the top 20 bits for address plus flags 
-//          * Typically: PDE gets the same "user" bit if we want user access
-//          * If PDE is for kernel, do not set PAGE_USER
-//          */
-//         memset((void*)pt_frame, 0, PAGE_SIZE); // zero the frame
-//         uint32_t pde_flags = (pt_frame & ~0xFFF) | (flags & PAGE_USER) | PAGE_PRESENT | PAGE_RW;
-//         page_directory[pd_index] = pde_flags;
-//     }
-
-//     page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
-
-//     (*pt)[pt_index] = (phys_addr & ~0xFFF) | (flags & 0xFFF);
-
-//     /* Flush TLB for this address */
-//     asm volatile("invlpg (%0)" :: "r"(virt_addr) : "memory");
-// }
 
 // static void map_page_kernel(uintptr_t virt, uint32_t phys)
 // {
@@ -233,16 +237,9 @@ void* kbrk(void* addr)
     return heap_end;
 }
 
-/**
- * kmalloc:
- *   Allocates a contiguous block of memory of at least `size` bytes
- *   from the kernel “heap.” It tries to find a free block from the free_list;
- *   if none are large enough, it expands the heap via `kbrk()`.
- */
 void* kmalloc(size_t size)
 {
     size = ALIGN_8(size);
-
     block_header_t* current = free_list;
     block_header_t* prev = NULL;
 
@@ -251,30 +248,26 @@ void* kmalloc(size_t size)
         if (current->free && current->size >= size)
         {
             current->free = 0;
-        
-            if (current->size > size + sizeof(block_header_t))
+            /* Split block if there is extra space for a new block header plus minimal payload */
+            if (current->size > size + sizeof(block_header_t) + 8)
             {
-                block_header_t* new_block = (block_header_t*)ALIGN_8((uintptr_t)current + sizeof(block_header_t) + size);
+                block_header_t* new_block = (block_header_t*)((uintptr_t)current + sizeof(block_header_t) + size);
                 new_block->size = current->size - size - sizeof(block_header_t);
                 new_block->free = 1;
                 new_block->next = current->next;
-
                 current->size = size;
                 current->next = new_block;
             }
-
-            void* allocated_mem = (char*)current + sizeof(block_header_t);
-            return allocated_mem;
+            return (void*)((uintptr_t)current + sizeof(block_header_t));
         }
-
         prev = current;
         current = current->next;
     }
 
+    /* No free block found; expand the heap */
     uintptr_t old_end = (uintptr_t)heap_end;
     size_t new_size = size + sizeof(block_header_t);
     uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
-
     if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
     {
         puts_color("kmalloc: Out of memory (heap expansion)!\n", RED);
@@ -293,62 +286,57 @@ void* kmalloc(size_t size)
     new_block->next = NULL;
 
     if (prev)
-    {
         prev->next = new_block;
-    }
     else
     {
         free_list = new_block;
         heap_started = free_list;
     }
 
-    void* allocated_mem = (char*)new_block + sizeof(block_header_t);
-    return allocated_mem;
+    return (void*)((uintptr_t)new_block + sizeof(block_header_t));
 }
 
 void kfree(void* ptr)
 {
     if (!ptr) return;
-
-    block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
+    block_header_t* block = (block_header_t*)((uintptr_t)ptr - sizeof(block_header_t));
     block->free = 1;
 
-    block_header_t* current = heap_started;
-
-    while (current)
+    /* Merge with next block if contiguous */
+    if (block->next && block->next->free)
     {
-        if (current->free && current->next && current->next->free)
+        uintptr_t block_end = (uintptr_t)block + sizeof(block_header_t) + block->size;
+        if (block_end == (uintptr_t)block->next)
         {
-            current->size += sizeof(block_header_t) + current->next->size;
-            current->next = current->next->next;
+            block->size += sizeof(block_header_t) + block->next->size;
+            block->next = block->next->next;
         }
-        // prev = current;
-        current = current->next;
     }
 
-    // if (prev && prev->free && block->free)
-    // {
-    //     prev->size += sizeof(block_header_t) + block->size;
-    //     prev->next = block->next;
-    //     printf("kfree: merged with previous block\n");
-    //     printf("prev: %p, block: %p, size: %z\n", prev, block, prev->size);
-    //     printf("next: %p\n", prev->next);
-    //     // while(1);
-    // }
-    // else if (block < free_list)
-    // {
-    //     printf("kfree: block is before free_list\n");
-    //     printf("block: %p, free_list: %p\n", block, free_list);
-    //     block->next = free_list;
-    //     free_list = block;
-    //     while(1);
-    // }
+    /* Merge with previous block if contiguous */
+    block_header_t* current = heap_started;
+    block_header_t* prev = NULL;
+    while (current && current != block)
+    {
+        prev = current;
+        current = current->next;
+    }
+    if (prev && prev->free)
+    {
+        uintptr_t prev_end = (uintptr_t)prev + sizeof(block_header_t) + prev->size;
+        if (prev_end == (uintptr_t)block)
+        {
+            prev->size += sizeof(block_header_t) + block->size;
+            prev->next = block->next;
+        }
+    }
 }
+
 size_t ksize(void* ptr)
 {
     if (!ptr) return 0;
 
-    block_header_t* block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
+    block_header_t* block = (block_header_t*)((uintptr_t)ptr - sizeof(block_header_t));
     return block->size;
 }
 
@@ -357,93 +345,182 @@ size_t ksize(void* ptr)
 /*                           VMALLOC                                          */
 /*                                                                            */
 /*############################################################################*/
+
 void* vmalloc(size_t size, int is_user)
 {
-    size = ALIGN_8(size);
+    /* Round up payload size and add header */
+    size_t aligned_size = ALIGN_4K(size);
+    size_t total_size = ALIGN_4K(aligned_size + sizeof(vblock_header_t));
 
     vblock_header_t* current = vblock_list;
     vblock_header_t* prev = NULL;
-
     while (current)
     {
-        if (current->free && current->size >= size)
+        if (current->free && current->size >= total_size)
         {
             current->free = 0;
             current->is_user = is_user;
-
-            if (current->size > size + sizeof(vblock_header_t))
+            /* Split block if possible */
+            if (current->size > total_size + sizeof(vblock_header_t) + PAGE_SIZE)
             {
-                vblock_header_t* new_block = (vblock_header_t*)ALIGN_8((uintptr_t)current + sizeof(vblock_header_t) + size);
-                new_block->size = current->size - size - sizeof(vblock_header_t);
+                vblock_header_t* new_block = (vblock_header_t*)((uintptr_t)current + total_size);
+                new_block->size = current->size - total_size;
                 new_block->free = 1;
                 new_block->next = current->next;
-                new_block->is_user = is_user;
-
-                current->size = size;
+                new_block->is_user = 0;
+                current->size = total_size;
                 current->next = new_block;
             }
-
-            void* allocated_mem = (char*)current + sizeof(vblock_header_t);
-            return allocated_mem;
+            return (void*)((uintptr_t)current + sizeof(vblock_header_t));
         }
-
         prev = current;
         current = current->next;
     }
 
-    uintptr_t old_end = (uintptr_t)heap_end;
-    size_t new_size = size + sizeof(vblock_header_t);
-    uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
-
-    if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
+    uintptr_t old_brk = (uintptr_t)vmalloc_brk;
+    uintptr_t new_brk = old_brk + total_size;
+    if (new_brk > VMALLOC_START + VMALLOC_SIZE)
     {
-        puts_color("vmalloc: Out of memory (heap expansion)!\n", RED);
+        puts_color("vmalloc: Out of vmalloc space!\n", RED);
         return NULL;
     }
 
-    if (kbrk((void*)new_heap_end) == (void*)-1)
+    /* Map each page in the new region */
+    for (uintptr_t addr = old_brk; addr < new_brk; addr += PAGE_SIZE)
     {
-        puts_color("vmalloc: Failed to expand heap!\n", RED);
-        return NULL;
+        uint32_t phys_frame = allocate_frame();
+        if (!phys_frame)
+        {
+            puts_color("vmalloc: Out of physical frames!\n", RED);
+            return NULL;
+        }
+        uint32_t flags = PAGE_PRESENT | PAGE_RW;
+        if (is_user)
+            flags |= PAGE_USER;
+        map_page(addr, phys_frame, flags);
     }
+    vmalloc_brk = (void*)new_brk;
 
-    vblock_header_t* new_block = (vblock_header_t*)old_end;
-    new_block->size = size;
+    /* Create the new block header */
+    vblock_header_t* new_block = (vblock_header_t*)old_brk;
+    new_block->size = total_size;
     new_block->free = 0;
     new_block->next = NULL;
     new_block->is_user = is_user;
 
     if (prev)
-    {
         prev->next = new_block;
-    }
     else
-    {
         vblock_list = new_block;
-    }
 
-    void* allocated_mem = (char*)new_block + sizeof(vblock_header_t);
-    return allocated_mem;
+    return (void*)((uintptr_t)new_block + sizeof(vblock_header_t));
 }
+
+// void* vmalloc(size_t size, int is_user)
+// {
+//     size = ALIGN_8(size);
+
+//     vblock_header_t* current = vblock_list;
+//     vblock_header_t* prev = NULL;
+
+//     while (current)
+//     {
+//         if (current->free && current->size >= size)
+//         {
+//             current->free = 0;
+//             current->is_user = is_user;
+
+//             if (current->size > size + sizeof(vblock_header_t))
+//             {
+//                 vblock_header_t* new_block = (vblock_header_t*)ALIGN_8((uintptr_t)current + sizeof(vblock_header_t) + size);
+//                 new_block->size = current->size - size - sizeof(vblock_header_t);
+//                 new_block->free = 1;
+//                 new_block->next = current->next;
+//                 new_block->is_user = is_user;
+
+//                 current->size = size;
+//                 current->next = new_block;
+//             }
+
+//             void* allocated_mem = (char*)current + sizeof(vblock_header_t);
+//             return allocated_mem;
+//         }
+
+//         prev = current;
+//         current = current->next;
+//     }
+
+//     uintptr_t old_end = (uintptr_t)heap_end;
+//     size_t new_size = size + sizeof(vblock_header_t);
+//     uintptr_t new_heap_end = (uintptr_t)heap_end + new_size;
+
+//     if (new_heap_end > HEAP_START + MAX_HEAP_SIZE)
+//     {
+//         puts_color("vmalloc: Out of memory (heap expansion)!\n", RED);
+//         return NULL;
+//     }
+
+//     if (kbrk((void*)new_heap_end) == (void*)-1)
+//     {
+//         puts_color("vmalloc: Failed to expand heap!\n", RED);
+//         return NULL;
+//     }
+
+//     vblock_header_t* new_block = (vblock_header_t*)old_end;
+//     new_block->size = size;
+//     new_block->free = 0;
+//     new_block->next = NULL;
+//     new_block->is_user = is_user;
+
+//     if (prev)
+//     {
+//         prev->next = new_block;
+//     }
+//     else
+//     {
+//         vblock_list = new_block;
+//     }
+
+//     void* allocated_mem = (char*)new_block + sizeof(vblock_header_t);
+//     return allocated_mem;
+// }
 
 void vfree(void* ptr)
 {
     if (!ptr) return;
-
-    vblock_header_t* block = (vblock_header_t*)((char*)ptr - sizeof(vblock_header_t));
+    vblock_header_t* block = (vblock_header_t*)((uintptr_t)ptr - sizeof(vblock_header_t));
     block->free = 1;
 
     vblock_header_t* current = vblock_list;
     vblock_header_t* prev = NULL;
-
     while (current)
     {
-        if (current->free && current->next && current->next->free)
+        if (current->free)
         {
-            current->size += sizeof(vblock_header_t) + current->next->size;
-            current->next = current->next->next;
+            /* Merge with next block if physically contiguous */
+            if (current->next && current->next->free)
+            {
+                uintptr_t current_end = (uintptr_t)current + sizeof(vblock_header_t) + current->size;
+                if (current_end == (uintptr_t)current->next)
+                {
+                    current->size += sizeof(vblock_header_t) + current->next->size;
+                    current->next = current->next->next;
+                    continue; // re-check current->next
+                }
+            }
+            /* Merge with previous block if physically contiguous */
+            if (prev && prev->free)
+            {
+                uintptr_t prev_end = (uintptr_t)prev + sizeof(vblock_header_t) + prev->size;
+                if (prev_end == (uintptr_t)current)
+                {
+                    prev->size += sizeof(vblock_header_t) + current->size;
+                    prev->next = current->next;
+                    current = prev; // set current to merged block
+                    continue;
+                }
+            }
         }
-
         prev = current;
         current = current->next;
     }
@@ -452,8 +529,7 @@ void vfree(void* ptr)
 size_t vsize(void* ptr)
 {
     if (!ptr) return 0;
-
-    vblock_header_t* block = (vblock_header_t*)((char*)ptr - sizeof(vblock_header_t));
+    vblock_header_t* block = (vblock_header_t*)((uintptr_t)ptr - sizeof(vblock_header_t));
     return block->size;
 }
 
