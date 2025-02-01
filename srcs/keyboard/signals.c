@@ -10,28 +10,12 @@ void signal_task(task_t* task, int signal, signal_handler_t handler)
 {
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
-        if (task->pid == 1)
-        {
-            printf("handler: %p\n", handler);
-            printf("task: %d\n", task->pid);
-            printf("signal: %d\n", signal);
-            // scheduler();
-        }
         task->signals.handlers[signal] = handler;
     }
-    if (task->pid == 1)
-    {
-        // scheduler();
-        puts_color("Signal set\n", GREEN);
-    }
-
 }
 
-// int _signal(pid_t pid, int signal)
 int _signal(int signal, signal_handler_t handler)
 {
-    printf("handler: %p\n", handler);
-    printf("signal: %d\n", signal);
     task_t *task = get_current_task();
     task->signals.handlers[signal] = handler;
     return 1;

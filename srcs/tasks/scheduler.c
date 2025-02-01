@@ -37,9 +37,6 @@ void free_finished_tasks()
     kfree((void*)to_free->stack);
     kfree(to_free);
     to_free = NULL;
-    // enable_interrupts();
-    puts_color("Task freed\n", GREEN);
-    // printf("Task freed\n");
 }
 
 task_t* get_current_task()
@@ -253,7 +250,6 @@ void task_1_exit()
 
 void task_1(void)
 {
-    // signal(2, task_1_exit);
     puts("Task 1 Started\n");
     // printf("hndler: %p\n", task_1_sighandler);
 
@@ -261,22 +257,9 @@ void task_1(void)
     // kill(2, 2);
     // read(0, NULL, 0);
     puts("Task 1: Signal handler set\n");
-    int i = 0;
-    bool flag;
-    flag = false;
-    i = 0;
-    printf("Task 1: %d\n", i);
     while (1)
     {
-        i++;
         // puts_color("Task 1\n", i %128);
-        if (i == 10000 && flag == false)
-        {
-        printf("Task 1: %d\n", i);
-            flag = true;
-            // signal(2, task_1_exit);
-            // create_task(task_3);
-        }
         // if (i % 1000 == 0)
         // {
         scheduler();
@@ -352,11 +335,11 @@ void task_read()
 void kshell();
 void start_foo_tasks(void)
 {
+    create_task(kshell, "kshell", NULL);
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_2, "task_2", task_2_exit);
     // create_task(task_write, "task_write", NULL); // floods CLI
     create_task(task_read, "task_read", NULL);
-    create_task(kshell, "kshell", NULL);
 }
 
 /* ################################################################### */

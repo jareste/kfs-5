@@ -1,6 +1,9 @@
 #ifndef SOCKETS_H
 #define SOCKETS_H
 
+#include "../utils/utils.h"
+#include "../utils/stdint.h"
+
 typedef struct
 {
     int socket_id;

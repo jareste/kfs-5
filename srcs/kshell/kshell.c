@@ -10,7 +10,8 @@
 #define MAX_SECTIONS_COMMANDS 25
 #define MAX_SECTIONS SECTION_T_MAX
 
-typedef struct {
+typedef struct
+{
     const char* name;
     section_t section;
     command_t commands[MAX_SECTIONS_COMMANDS];
