@@ -465,7 +465,6 @@ void task_read()
     _signal(2, task_exit);
     printf("Task 4 Started\n");
     int i;
-// scheduler();
     i = _fork();
     printf("Forked: %d\n", i);
     while (1)

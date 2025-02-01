@@ -48,6 +48,7 @@ common_isr_handler:
 
 global syscall_handler_asm
 syscall_handler_asm:
+; when calling here i must build a trampoline, so then i'll not care about the stack corruption
 	push 0
 	push 0x80
     pusha
