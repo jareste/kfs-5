@@ -8,6 +8,7 @@
 #include "signals.h"
 #include "../syscalls/syscalls.h"
 #include "../tasks/task.h"
+#include "../ide/ide.h"
 
 void enable_interrupts(void)
 {
@@ -101,6 +102,9 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
         case 1:
             keyboard_handler();
             break;
+        case 14:
+            ide_irq_handler();
+            break;
         default:
         printf("eax: %d\n", reg.eax);
         printf("ebx: %d\n", reg.ebx);
@@ -109,7 +113,9 @@ void irq_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state
     }
 
     enable_interrupts();
+    // if (intr_no >= 8)
     // puts("#######################################################");
+    if(intr_no >= 8) outb(0xA0, 0x20);
 	outb(PIC_EOI, PIC1_COMMAND);
 }
 
@@ -165,7 +171,7 @@ void init_interrupts()
     outb(0xA1, a2);
 
     outb(0x21, inb(0x21) & ~0x01); // Clear the mask for IRQ0
-
+    outb(0xA1, inb(0xA1) & ~(1 << 6)); // Clear the mask for IRQ14
 
     idt_set_gate(32, (uint32_t)irq_handler_0); /* Programmable Interrupt Timer Interrupt */
     idt_set_gate(33, (uint32_t)irq_handler_1); /* Keyboard */
@@ -187,4 +193,5 @@ void init_interrupts()
     idt_set_gate(0x80, (uint32_t)syscall_handler_asm);
 
     register_idt();
+    ide_init();
 }

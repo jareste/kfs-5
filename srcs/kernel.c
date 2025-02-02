@@ -6,6 +6,7 @@
 #include "memory/memory.h"
 #include "keyboard/signals.h"
 #include "tasks/task.h"
+#include "ide/ide.h"
 
 extern uint32_t endkernel;
 
@@ -21,10 +22,13 @@ void kernel_main()
 
     init_timer();
 
-    scheduler_init();
-    start_foo_tasks();
     enable_interrupts();
-    scheduler();
+
+    ide_demo();
+
+    // scheduler_init();
+    // start_foo_tasks();
+    // scheduler();
 
     while (1)
     {
