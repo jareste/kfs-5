@@ -12,6 +12,8 @@ typedef int (*syscall_handler_2_t)(uint32_t arg1, uint32_t arg2);
 typedef int (*syscall_handler_1_t)(uint32_t arg1);
 typedef int (*syscall_handler_0_t)();
 
+bool syscall_happening = false;
+
 typedef enum
 {
     RET_INT = 0,
@@ -56,6 +58,11 @@ int sys_write(int fd, const char* buf, size_t count)
     if (!buf || count == 0)
     {
         printf("Write: Invalid buffer or count\n");
+        return -1;
+    }
+    if (fd < 0 || fd > 2)
+    {
+        // printf("Write: Invalid file descriptor\n");
         return -1;
     }
     puts(buf);
@@ -149,7 +156,13 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
         printf("Unknown syscall: %d\n", syscall_number);
         return -1;
     }
-    scheduler();
+    // printf("syscall happening: %d\n", syscall_happening);
+    while (syscall_happening)
+    {
+        // puts("Syscall happening\n");
+        scheduler();
+    }
+    syscall_happening = true;
 
     syscall_entry_t entry = syscall_table[syscall_number];
 
@@ -184,7 +197,8 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
             break;
     }
 
-    scheduler();
+    // scheduler();
 
+    syscall_happening = false;
     return ret_value.int_value;
 }

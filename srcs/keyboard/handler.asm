@@ -53,7 +53,7 @@ syscall_handler_asm:
 	push 0x80
     pusha
     call syscall_handler
-    mov [esp + 28], eax
+    mov [esp + 28], eax ; save the return value
     popa
 	add esp, 8
 	; this shouldnt be here

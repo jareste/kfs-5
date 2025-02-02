@@ -48,6 +48,7 @@ void handle_signals()
     // printf("Handling signals for PID %p\n", task->signals);
     if (task->signals.pending_signals == 0)
     {
+    // printf("end of handling signals\n");
         return;
     }
     for (int i = 0; i < MAX_SIGNALS; i++)

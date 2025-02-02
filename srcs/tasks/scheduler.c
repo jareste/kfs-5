@@ -97,6 +97,21 @@ gid_t get_current_gid()
     return current_task->gid;
 }
 
+void set_current_uid(uid_t uid)
+{
+    current_task->uid = uid;
+}
+
+void set_current_euid(uid_t euid)
+{
+    current_task->euid = euid;
+}
+
+void set_current_gid(gid_t gid)
+{
+    current_task->gid = gid;
+}
+
 pid_t _wait(int* status)
 {
     data_t data;
@@ -130,7 +145,12 @@ task_t* find_task(pid_t pid)
 
 void scheduler(void)
 {
-    if (!current_task) return;
+    if (!current_task)
+    {
+        if (!task_list)
+            return;
+        current_task = task_list;
+    }
     
     free_finished_tasks();
 
@@ -460,55 +480,14 @@ void scheduler_init(void)
 }
 
 /*************************************** */
-
-void task_write(void)
-{
-    puts("Task 3 Started\n");
-    int i = 0;
-    int return_value;
-    signal(2, task_exit);
-    while (1)
-    {
-        i++;
-        // puts_color("Task 3\n", RED);
-        // if (i % 1000 == 0)
-        // {
-
-        const char* msg = "Hello, world!\n";
-        size_t msg_len = strlen(msg);
-
-        // puts_color("TEST_WRITE\n", LIGHT_MAGENTA);
-        // asm volatile (
-        //     "mov $1, %%eax\n"
-        //     "mov $1, %%ebx\n"
-        //     "mov %1, %%ecx\n"
-        //     "mov %2, %%edx\n"
-        //     "int $0x80\n"
-        //     "mov %%eax, %0\n"
-        //     : "=r"(return_value)
-        //     : "r"(msg), "r"(msg_len)
-        //     : "eax", "ebx", "ecx", "edx"
-        // );
-        // printf("SYS_WRITE return value: %d\n", return_value);
-        return_value = write(2, msg, msg_len);
-        if (return_value <= 0)
-        {
-            puts_color("Error writing\n", RED);
-            break;
-        }
-        else
-        {
-            printf("SYS_WRITE return value-------------: %d\n", return_value);
-        }
-
-            scheduler();
-        // }
-    }
-}
-
 void task_1_exit()
 {
     puts_color("Task 1 exited\n", RED);
+}
+
+void task_1_sighandler(int signal)
+{
+    puts_color("Task 1: Signal received\n", GREEN);
 }
 
 void task_1(void)
@@ -542,11 +521,16 @@ void task_1(void)
     munmap(user_buffer, mmap_size);
     puts_color("test_mmap: mmap/munmap test passed\n", GREEN);
 
+    signal(2, task_1_sighandler);
+
     while (1)
     {
         // puts_color("Task 1\n", i %128);
         // if (i % 1000 == 0)
         // {
+        // int return_value;
+        // char buffer[10];
+        // return_value = read(0, buffer, sizeof(buffer));
         scheduler();
         // }
     }
@@ -597,6 +581,9 @@ void task_read()
     if (i == 0)
     {
         printf("My parent is %d\n", current_task->parent->pid);
+        set_current_uid(1);
+        set_current_euid(1);
+        set_current_gid(1);
     }
     else
     {
@@ -606,27 +593,21 @@ void task_read()
     while (1)
     {
         char buffer[10];
-        size_t return_value;
-        // puts_color("Task 4\n", GREEN);
+        int return_value;
         return_value = read(0, buffer, sizeof(buffer));
+        // return_value = write(3, buffer, return_value); // error writing to fd 3
         if (return_value <= 0)
         {
             puts_color("Error reading\n", RED);
         }
-        // puts("Buffer after sys_read: '");
         // else
         // {
-        //     printf("SYS_READ return value: %d\n", return_value);
+        //     buffer[return_value] = '\0';
+        //     puts_color("Read: ", GREEN);
+        //     puts_color(buffer, GREEN);
+        //     puts_color("\n", GREEN);
+        //     printf("Current task: %p\n", current_task);
         // }
-        // printf("Buffer after sys_read: '");
-        // for (size_t i = 0; i < 10; i++)
-        // {
-        //     if (buffer[i] == 0)
-        //         break;
-        //     putc(buffer[i]);
-        // }
-        // puts("'\n");
-        // printf("SYS_READ return value: %d\n", return_value);
         scheduler();
     }
 }
@@ -656,7 +637,6 @@ void start_foo_tasks(void)
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_read, "task_read", NULL);
     create_task(task_2, "task_2", task_2_exit);
-    // create_task(task_write, "task_write", NULL); // floods CLI
     to_free = NULL;
     printf("current_task: %p\n", current_task);
 }
