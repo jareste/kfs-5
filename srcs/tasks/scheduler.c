@@ -82,6 +82,13 @@ task_t* get_current_task()
     return current_task;
 }
 
+pid_t _getpid()
+{
+    if (!current_task)
+        return 0;
+    return current_task->pid;
+}
+
 uid_t get_current_uid()
 {
     return current_task->uid;
@@ -493,12 +500,7 @@ void task_1_sighandler(int signal)
 void task_1(void)
 {
     puts("Task 1 Started\n");
-    // printf("hndler: %p\n", task_1_sighandler);
 
-    // scheduler();
-    // kill(2, 2);
-    // read(0, NULL, 0);
-    puts("Task 1: Signal handler set\n");
     size_t mmap_size = 16 * 1024;
     void* user_buffer = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE | PROT_USER,
                              MAP_ANONYMOUS, -1, 0);
@@ -525,14 +527,13 @@ void task_1(void)
 
     while (1)
     {
-        // puts_color("Task 1\n", i %128);
-        // if (i % 1000 == 0)
-        // {
-        // int return_value;
-        // char buffer[10];
-        // return_value = read(0, buffer, sizeof(buffer));
+        int return_value;
+        return_value = write(3, "Task 1\n", 7);
+        if (return_value > 0) // it must fail so not failing it's indeed a fail
+        {
+            puts_color("Error writing\n", RED);
+        }
         scheduler();
-        // }
     }
 }
 
