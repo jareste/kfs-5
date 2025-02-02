@@ -520,6 +520,28 @@ void task_1(void)
     // kill(2, 2);
     // read(0, NULL, 0);
     puts("Task 1: Signal handler set\n");
+    size_t mmap_size = 16 * 1024;
+    void* user_buffer = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE | PROT_USER,
+                             MAP_ANONYMOUS, -1, 0);
+    if (user_buffer == (void*)-1)
+    {
+        puts_color("test_mmap: mmap failed!\n", RED);
+        return;
+    }
+
+    memset(user_buffer, 'A', mmap_size);
+    for (size_t i = 0; i < mmap_size; i++)
+    {
+        if (((char*)user_buffer)[i] != 'A')
+        {
+            puts_color("test_mmap: memory corruption detected!\n", RED);
+            return;
+        }
+    }
+
+    munmap(user_buffer, mmap_size);
+    puts_color("test_mmap: mmap/munmap test passed\n", GREEN);
+
     while (1)
     {
         // puts_color("Task 1\n", i %128);

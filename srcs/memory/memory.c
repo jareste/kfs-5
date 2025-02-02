@@ -535,6 +535,108 @@ size_t vsize(void* ptr)
 
 /*############################################################################*/
 /*                                                                            */
+/*                           MMAP                                             */
+/*                                                                            */
+/*############################################################################*/
+static int region_is_free_in_vblocks(uintptr_t start, size_t length)
+{
+    uintptr_t end = start + length;
+    vblock_header_t* current = vblock_list;
+
+    while (current)
+    {
+        if (!current->free)
+        {
+            uintptr_t block_start = (uintptr_t)current + sizeof(vblock_header_t);
+            uintptr_t block_end   = block_start + current->size;
+
+            if (end > block_start && start < block_end)
+            {
+                return 0;
+            }
+        }
+        current = current->next;
+    }
+    return 1;
+}
+
+static void insert_fixed_vblock(uintptr_t start, size_t length, int is_user)
+{
+    vblock_header_t* block = (vblock_header_t*)start;
+
+    block->size    = length - sizeof(vblock_header_t);
+    block->free    = 0;
+    block->is_user = is_user;
+
+    block->next = vblock_list;
+    vblock_list = block;
+}
+
+
+void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+    if (!(flags & MAP_ANONYMOUS))
+    {
+        puts_color("mmap: Only MAP_ANONYMOUS is supported!\n", RED);
+        return (void*)-1;
+    }
+
+    int is_user = (prot & PROT_USER) ? 1 : 0;
+
+    if (flags & MAP_FIXED)
+    {
+        uintptr_t fixed_addr   = ALIGN_4K((uintptr_t)addr);
+        size_t aligned_length  = ALIGN_4K(length);
+        uintptr_t fixed_end    = fixed_addr + aligned_length;
+
+        if (!region_is_free_in_vblocks(fixed_addr, aligned_length))
+        {
+            puts_color("mmap: region is NOT free!\n", RED);
+            return (void*)-1;
+        }
+
+        uint32_t page_flags = PAGE_PRESENT;
+        if (prot & PROT_WRITE) page_flags |= PAGE_RW;
+        if (prot & PROT_USER)  page_flags |= PAGE_USER;
+
+        for (uintptr_t va = fixed_addr; va < fixed_end; va += PAGE_SIZE)
+        {
+            uint32_t frame = allocate_frame();
+            if (!frame)
+            {
+                puts_color("mmap: out of physical frames!\n", RED);
+                return (void*)-1;
+            }
+            map_page(va, frame, page_flags);
+        }
+
+        insert_fixed_vblock(fixed_addr, aligned_length, is_user);
+
+        return (void*)fixed_addr;
+    }
+    else
+    {
+        void* res = vmalloc(length, is_user);
+        if (!res)
+        {
+            puts_color("mmap: vmalloc failed!\n", RED);
+            return (void*)-1;
+        }
+        return res;
+    }
+}
+
+int munmap(void* addr, size_t length)
+{
+    if (!addr) return -1;
+
+    vfree(addr);
+    return 0;
+}
+
+
+/*############################################################################*/
+/*                                                                            */
 /*                           TESTS                                            */
 /*                                                                            */
 /*############################################################################*/
