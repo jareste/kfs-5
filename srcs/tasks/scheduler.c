@@ -8,6 +8,7 @@
 #include "../kshell/kshell.h"
 #include "../syscall_wrappers/stdlib.h"
 #include "../utils/queue.h"
+#include "../sockets/sockets.h"
 
 #define STACK_SIZE 4096
 #define MAX_ACTIVE_TASKS 15
@@ -138,7 +139,7 @@ pid_t _wait(int* status)
     return data.pid;
 }
 
-task_t* find_task(pid_t pid)
+task_t* get_task_by_pid(pid_t pid)
 {
     task_t *current = task_list;
     do
@@ -166,6 +167,15 @@ void scheduler(void)
     if (next->pid == 0)
     {
         next = next->next;
+    }
+
+    while (next->state == TASK_WAITING)
+    {
+        next = next->next;
+        if (next->pid == 0)
+        {
+            next = next->next;
+        }
     }
 
     task_t *prev = current_task;
@@ -238,7 +248,7 @@ static void task_exit_task(task_t* task, int signal)
 
 static void task_exit_pid(pid_t task_id)
 {
-    task_t *task = find_task(task_id);
+    task_t *task = get_task_by_pid(task_id);
     task_exit_task(task, 0);
 }
 
@@ -558,6 +568,45 @@ void task_2(void)
     }
 }
 
+void task_socket_send()
+{
+    puts("Task SOCKSEND Started\n");
+    int i = 0;
+    i = 0;
+    int sockfd;
+    sockfd = _socket();
+    /* We assume this must be 0 */
+    printf("Socket fd: %d\n", sockfd);
+    while (1)
+    {
+        socket_send(sockfd, "Hello, world!\n", 14);
+
+        scheduler();
+    }
+}
+
+void task_socket_recv()
+{
+    puts("Task SOCKRECV Started\n");
+
+    int sockfd;
+    sockfd = socket_connect(0);
+    printf("Socket fd: %d\n", sockfd);
+    while (1)
+    {
+        char buffer[16];
+        socket_recv(sockfd, buffer, sizeof(buffer));
+        // puts_color("Received: ", GREEN);
+        // puts_color(buffer, GREEN);
+        // putc('\n');
+        // puts("Task 4\n");
+        // if (i % 1000 == 0)
+        // {
+        scheduler();
+        // }
+    }
+}
+
 void recursion()
 {
     static unsigned int i = 0;
@@ -574,7 +623,6 @@ void test_recursion(void)
 
 void task_read()
 {
-    _signal(2, task_exit);
     printf("Task 4 Started\n");
     int i;
     i = _fork();
@@ -591,6 +639,7 @@ void task_read()
         printf("My child is %d\n", current_task->children->task->pid);
     }
     printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
+    signal(2, task_1_sighandler);
     while (1)
     {
         char buffer[10];
@@ -638,6 +687,8 @@ void start_foo_tasks(void)
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_read, "task_read", NULL);
     create_task(task_2, "task_2", task_2_exit);
+    create_task(task_socket_send, "task_socket_send", NULL);
+    create_task(task_socket_recv, "task_socket_recv", NULL);
     to_free = NULL;
     printf("current_task: %p\n", current_task);
 }

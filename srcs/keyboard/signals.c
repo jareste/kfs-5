@@ -73,7 +73,7 @@ int _kill(pid_t pid, int signal)
     {
         return -1;
     }
-    task_t *task = find_task(pid);
+    task_t *task = get_task_by_pid(pid);
     if (!task)
     {
         printf("Task with PID %d not found\n", pid);

@@ -15,5 +15,9 @@ typedef struct
     bool is_connected; /* Socket is connected ? */
 } kernel_socket_t;
 
+int _socket();
+int socket_connect(int socket_id);
+int socket_send(int socket_id, char *data, size_t length);
+int socket_recv(int socket_id, char *buffer, size_t length);
 
 #endif // SOCKETS_H

@@ -48,7 +48,7 @@ typedef struct task_struct
 void scheduler(void);
 void start_foo_tasks(void);
 void scheduler_init(void);
-task_t* find_task(pid_t pid);
+task_t* get_task_by_pid(pid_t pid);
 task_t* get_current_task();
 void kill_task();
 
