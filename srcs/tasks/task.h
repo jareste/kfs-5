@@ -14,6 +14,12 @@ typedef enum
     TASK_TO_DIE
 } task_state_t;
 
+typedef struct child_list
+{
+    struct task_struct *task;
+    struct child_list *next;
+} child_list_t;
+
 typedef struct task_struct
 {
     cpu_state_t cpu;
@@ -23,6 +29,7 @@ typedef struct task_struct
     uintptr_t stack;        // User Stack
     struct task_struct *parent;
     struct task_struct *next;
+    child_list_t *children;
     task_state_t state;
     char name[16];
     void (*on_exit)(void);

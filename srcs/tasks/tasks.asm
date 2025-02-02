@@ -36,8 +36,6 @@ switch_context:
 global fork_trampoline
 fork_trampoline:
     mov eax, 0
-    ; .kkk:
-    ; jmp .kkk
     ret
 
 global capture_cpu_state

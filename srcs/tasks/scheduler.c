@@ -32,10 +32,45 @@ task_t* to_free = NULL;
 pid_t task_index = 0;
 Queue finished_pid_queue;
 
+void dtach_from_childs(task_t* task)
+{
+    child_list_t *current = task->children;
+    while (current)
+    {
+        current->task->parent = NULL;
+        current = current->next;
+    }
+    kfree(task->children);
+}
+
+void remove_from_father(task_t* task)
+{
+    if (!task->parent)
+        return;
+    child_list_t *current = task->parent->children;
+    child_list_t *prev = NULL;
+    while (current)
+    {
+        if (current->task == task)
+        {
+            if (prev)
+                prev->next = current->next;
+            else
+                task->parent->children = current->next;
+            kfree(current);
+            break;
+        }
+        prev = current;
+        current = current->next;
+    }
+}
+
 void free_finished_tasks()
 {
     if (!to_free)
         return;
+    dtach_from_childs(to_free);
+    remove_from_father(to_free);
     kfree((void*)to_free->kernel_stack);
     kfree((void*)to_free->stack);
     kfree(to_free);
@@ -191,7 +226,27 @@ void kill_task(int signal)
 {
     printf("Killing task %d With signal:%d--------------\n", current_task->pid, signal);
     task_exit_task(current_task, signal);
-    // current_task->state = TASK_TO_DIE;
+}
+
+void add_child(task_t* parent, task_t* child)
+{
+    child_list_t *new_child = kmalloc(sizeof(child_list_t));
+    new_child->task = child;
+    new_child->next = NULL;
+
+    if (!parent->children)
+    {
+        parent->children = new_child;
+    }
+    else
+    {
+        child_list_t *current = parent->children;
+        while (current->next)
+        {
+            current = current->next;
+        }
+        current->next = new_child;
+    }
 }
 
 void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
@@ -259,6 +314,7 @@ pid_t _do_fork(const cpu_state_t *parent_state)
         return -1;
 
     uint32_t live_esp = parent_state->esp_;
+
 
     /*
      * Determine the parent's aligned stack top.
@@ -357,6 +413,8 @@ pid_t _do_fork(const cpu_state_t *parent_state)
     child->name[15] = '\0';
     child->on_exit = parent->on_exit;
     child->entry = parent->entry;
+    child->parent = parent;
+    add_child(parent, child);
     init_signals(child);
 
     add_new_task(child);
@@ -514,6 +572,14 @@ void task_read()
     int i;
     i = _fork();
     printf("Forked: %d\n", i);
+    if (i == 0)
+    {
+        printf("My parent is %d\n", current_task->parent->pid);
+    }
+    else
+    {
+        printf("My child is %d\n", current_task->children->task->pid);
+    }
     printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
     while (1)
     {
