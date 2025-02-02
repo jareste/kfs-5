@@ -302,7 +302,7 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     stack = kmalloc(STACK_SIZE);
     kernel_stack = kmalloc(STACK_SIZE);
     
-    memset(stack, 0xFF, STACK_SIZE);
+    memset(stack, 0, STACK_SIZE);
     task->stack = (uint32_t)stack; /* Point to the stack for being able to release it. */
 
     stack = (uint32_t*)((uint32_t)stack & 0xFFFFFFF0);
