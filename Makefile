@@ -81,7 +81,9 @@ fclean: clean
 re: fclean all
 
 run:
-	qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
+	qemu-system-i386 -kernel kernel.bin -drive file=disk.img,if=ide,index=0,media=disk
+
+	# qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
 
 run_debug:
 	qemu-system-i386 -kernel $(BIN_NAME) -d int,cpu_reset #-m 4096
@@ -97,6 +99,10 @@ debug:
 
 xorriso:
 	xorriso -indev $(NAME) -ls /boot/grub/
+
+crdisk:
+	qemu-img create -f raw disk.img 100M
+	dd if=/dev/zero of=disk.img bs=512 count=20480
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso
 

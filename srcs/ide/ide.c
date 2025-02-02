@@ -164,11 +164,11 @@ void ide_demo()
         write_buffer[i] = (i << 8) | (i & 0xFF);
     }
 
-    ide_write_sector(100, write_buffer);
+    ide_write_sector(1000, write_buffer);
 
     ide_flush();
     
-    ide_read_sector(100, read_buffer);
+    ide_read_sector(1000, read_buffer);
     
     if(memcmp(write_buffer, read_buffer, 512))
     {
