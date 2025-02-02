@@ -31,6 +31,10 @@ typedef struct task_struct
     size_t owner;
     void *mem_block;      // pointer to the big allocation
     size_t block_size;    // total size of the allocation
+    int exit_status;
+    uid_t uid;
+    uid_t euid;
+    gid_t gid;
     /* missing fields but untill it'll not work makes no sense to add them */    
 } task_t;
 

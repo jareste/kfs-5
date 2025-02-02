@@ -44,6 +44,10 @@ typedef unsigned long long int uintmax_t;
 
 typedef unsigned long size_t;
 
+/* uid gid euid */
+typedef unsigned int uid_t;
+typedef unsigned int gid_t;
+
 /* Limits of exact-width integer types */
 #define INT8_MIN (-128)
 #define INT16_MIN (-32768)

@@ -7,6 +7,7 @@
 #include "../gdt/gdt.h"
 #include "../kshell/kshell.h"
 #include "../syscall_wrappers/stdlib.h"
+#include "../utils/queue.h"
 
 #define STACK_SIZE 4096
 #define MAX_ACTIVE_TASKS 15
@@ -15,7 +16,7 @@ void kernel_main();
 void task_1(void);
 void task_1_exit();
 static void task_exit_pid(pid_t task_id);
-static void task_exit_task(task_t* task);
+static void task_exit_task(task_t* task, int singal);
 extern void switch_context(task_t *prev, task_t *next);
 extern void copy_context(task_t *prev, task_t *next);
 void show_tasks();
@@ -29,6 +30,7 @@ task_t* current_task = NULL;
 task_t* task_list = NULL;
 task_t* to_free = NULL;
 pid_t task_index = 0;
+Queue finished_pid_queue;
 
 void free_finished_tasks()
 {
@@ -43,6 +45,40 @@ void free_finished_tasks()
 task_t* get_current_task()
 {
     return current_task;
+}
+
+uid_t get_current_uid()
+{
+    return current_task->uid;
+}
+
+uid_t get_current_euid()
+{
+    return current_task->euid;
+}
+
+gid_t get_current_gid()
+{
+    return current_task->gid;
+}
+
+pid_t _wait(int* status)
+{
+    data_t data;
+    pid_t pid = dequeue(&finished_pid_queue, &data);
+    if (pid == 0)
+    {
+        scheduler();
+        while (pid == 0)
+        {
+            pid = dequeue(&finished_pid_queue, &data);
+            if (pid == 0)
+                scheduler();
+        }
+    }
+    if (status)
+        *status = data.status;
+    return data.pid;
 }
 
 task_t* find_task(pid_t pid)
@@ -117,7 +153,7 @@ void add_new_task(task_t* new_task)
     printf("Task %d added\n", new_task->pid);
 }
 
-static void task_exit_task(task_t* task)
+static void task_exit_task(task_t* task, int signal)
 {
     if (task->on_exit)
         task->on_exit();
@@ -130,6 +166,9 @@ static void task_exit_task(task_t* task)
 
     pid_t pid = task->pid;
 
+    task->state = TASK_ZOMBIE;
+    printf("Task %d exited with status %d ---\n", pid, signal);
+    enqueue(&finished_pid_queue, pid, signal);
     to_free = task;
 
     scheduler();
@@ -138,20 +177,20 @@ static void task_exit_task(task_t* task)
 static void task_exit_pid(pid_t task_id)
 {
     task_t *task = find_task(task_id);
-
-    task_exit_task(task);
+    task_exit_task(task, 0);
 }
 
 /* Cb function to be called once a task returns
 */
 static void task_exit()
 {
-    task_exit_task(current_task);
+    task_exit_task(current_task, 0);
 }
 
-void kill_task()
+void kill_task(int signal)
 {
-    task_exit_task(current_task);
+    printf("Killing task %d With signal:%d--------------\n", current_task->pid, signal);
+    task_exit_task(current_task, signal);
     // current_task->state = TASK_TO_DIE;
 }
 
@@ -194,6 +233,9 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->name[strlen(name) > 15 ? 15 : strlen(name)] = '\0';
     task->on_exit = on_exit;
     task->entry = entry;
+    task->uid = 0;
+    task->euid = 0;
+    task->gid = 0;
     init_signals(task);
     add_new_task(task);
     printf("Task %d created\n", task->pid);
@@ -335,6 +377,8 @@ void scheduler_init(void)
     uint32_t *stack = kmalloc(STACK_SIZE);
     stack += STACK_SIZE / sizeof(uint32_t);
 
+    init_queue(&finished_pid_queue);
+
     // *--stack = 0x202;
     // *--stack = 0x08;
     *--stack = (uint32_t)kernel_main;
@@ -347,6 +391,9 @@ void scheduler_init(void)
     idle->next = idle;
     memcpy(idle->name, "idle", 4);
     idle->name[4] = '\0';
+    idle->uid = 0;
+    idle->euid = 0;
+    idle->gid = 0;
     current_task = idle;
     task_list = idle;
     to_free = NULL;
@@ -467,6 +514,7 @@ void task_read()
     int i;
     i = _fork();
     printf("Forked: %d\n", i);
+    printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
     while (1)
     {
         char buffer[10];
@@ -495,10 +543,28 @@ void task_read()
     }
 }
 
+void task_wait()
+{
+    printf("Task 5 Started\n");
+    pid_t pid;
+    int status;
+    while (1)
+    {
+        pid = _wait(&status);
+        set_putchar_color(GREEN);
+        printf("Task 5: Child %d exited with status %d\n", pid, status);
+        set_putchar_color(LIGHT_GREY);
+ 
+        // puts("Task 5\n");
+        scheduler();
+    }
+}
+
 void kshell();
 void start_foo_tasks(void)
 {
     create_task(kshell, "kshell", NULL);
+    create_task(task_wait, "task_wait", NULL);
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_read, "task_read", NULL);
     create_task(task_2, "task_2", task_2_exit);

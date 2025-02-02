@@ -87,7 +87,7 @@ int _kill(pid_t pid, int signal)
 
 static void signal_handler(int signal)
 {
-    kill_task();
+    kill_task(signal);
 }
 
 static void panic_signal_handler(int signal)
