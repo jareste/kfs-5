@@ -7,6 +7,7 @@
 #include "keyboard/signals.h"
 #include "tasks/task.h"
 #include "ide/ide.h"
+#include "ide/ext2.h"
 
 extern uint32_t endkernel;
 
@@ -25,6 +26,10 @@ void kernel_main()
     enable_interrupts();
 
     ide_demo();
+
+
+    ext2_format();
+    ext2_demo();
 
     // scheduler_init();
     // start_foo_tasks();
