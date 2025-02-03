@@ -93,7 +93,6 @@ void ide_read_sector(uint32_t lba, uint16_t* buffer)
     
     enable_interrupts();
     status = inb(IDE_STATUS);
-    printf("Post-command status: %x\n", status);
 }
 
 int ide_read_sectors(uint32_t lba, uint8_t count, void* buffer)

@@ -47,6 +47,41 @@ typedef struct
 } ext2_group_desc_t;
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+typedef struct
+{
+    uint16_t i_mode;
+    uint16_t i_uid;
+    uint32_t i_size;
+    uint32_t i_atime;
+    uint32_t i_ctime;
+    uint32_t i_mtime;
+    uint32_t i_dtime;
+    uint16_t i_gid;
+    uint16_t i_links_count;
+    uint32_t i_blocks;
+    uint32_t i_flags;
+    uint32_t i_osd1;
+
+    uint32_t i_block[12];
+    uint32_t i_block_indirect;
+    uint32_t i_block_double;
+    uint32_t i_block_triple;
+} ext2_inode_t;
+#pragma pack(pop)
+
+
+#pragma pack(push, 1)
+typedef struct
+{
+    uint32_t inode;
+    uint16_t rec_len;
+    uint8_t  name_len;
+    uint8_t  file_type;
+    char     name[255];
+} ext2_dir_entry_t;
+#pragma pack(pop)
+
 int ext2_format(void);
 
 int ext2_read_superblock(ext2_superblock_t* sb);

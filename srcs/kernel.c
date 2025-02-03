@@ -31,9 +31,9 @@ void kernel_main()
     ext2_format();
     ext2_demo();
 
-    // scheduler_init();
-    // start_foo_tasks();
-    // scheduler();
+    scheduler_init();
+    start_foo_tasks();
+    scheduler();
 
     while (1)
     {
