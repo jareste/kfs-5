@@ -26,9 +26,9 @@ void kernel_main()
 
     ide_demo();
 
-    // scheduler_init();
-    // start_foo_tasks();
-    // scheduler();
+    scheduler_init();
+    start_foo_tasks();
+    scheduler();
 
     while (1)
     {
