@@ -84,6 +84,9 @@ typedef struct
 
 int ext2_format(void);
 
+int ext2_mount();
+
+
 int ext2_read_superblock(ext2_superblock_t* sb);
 
 void ext2_demo();

@@ -28,7 +28,8 @@ void kernel_main()
     ide_demo();
 
 
-    ext2_format();
+    ext2_mount();
+    // ext2_format();
     ext2_demo();
 
     scheduler_init();

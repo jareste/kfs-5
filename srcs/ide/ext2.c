@@ -209,6 +209,31 @@ int ext2_format(void)
     return 0;
 }
 
+int ext2_mount()
+{
+    ext2_superblock_t sb;
+    if (ext2_read_superblock(&sb) < 0)
+    {
+        printf("No valid ext2 found; formatting...\n");
+        return ext2_format();
+    }
+
+    ext2_group_desc_t gd;
+    static uint8_t block_buf[EXT2_BLOCK_SIZE];
+    read_block(2, block_buf);
+    memcpy(&gd, block_buf, sizeof(gd));
+    g_single_gd = gd;
+
+    ext2_read_inode(2, &g_current_dir_inode);
+    g_current_dir_inode_num = 2;
+
+    install_all_cmds(ext2_commands, GLOBAL);
+
+
+    printf("Mounted ext2 from disk successfully!\n");
+    return 0;
+}
+
 int ext2_read_superblock(ext2_superblock_t* sb)
 {
     if(!sb) return -1;
