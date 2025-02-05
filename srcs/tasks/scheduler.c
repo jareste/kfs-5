@@ -222,7 +222,7 @@ void add_new_task(task_t* new_task)
         current->next = new_task;
         new_task->next = task_list;
     }
-    printf("Task %d added\n", new_task->pid);
+    // printf("Task %d added\n", new_task->pid);
 }
 
 static void task_exit_task(task_t* task, int signal)
@@ -330,7 +330,7 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->gid = 0;
     init_signals(task);
     add_new_task(task);
-    printf("Task %d created\n", task->pid);
+    // printf("Task %d created\n", task->pid);
 }
 
 extern void fork_trampoline(void);
@@ -570,13 +570,13 @@ void task_2(void)
 
 void task_socket_send()
 {
-    puts("Task SOCKSEND Started\n");
+    // puts("Task SOCKSEND Started\n");
     int i = 0;
     i = 0;
     int sockfd;
     sockfd = _socket();
     /* We assume this must be 0 */
-    printf("Socket fd: %d\n", sockfd);
+    // printf("Socket fd: %d\n", sockfd);
     while (1)
     {
         socket_send(sockfd, "Hello, world!\n", 14);
@@ -587,11 +587,11 @@ void task_socket_send()
 
 void task_socket_recv()
 {
-    puts("Task SOCKRECV Started\n");
+    // puts("Task SOCKRECV Started\n");
 
     int sockfd;
     sockfd = socket_connect(0);
-    printf("Socket fd: %d\n", sockfd);
+    // printf("Socket fd: %d\n", sockfd);
     while (1)
     {
         char buffer[16];
@@ -623,22 +623,22 @@ void test_recursion(void)
 
 void task_read()
 {
-    printf("Task 4 Started\n");
+    // printf("Task 4 Started\n");
     int i;
     i = _fork();
-    printf("Forked: %d\n", i);
+    // printf("Forked: %d\n", i);
     if (i == 0)
     {
-        printf("My parent is %d\n", current_task->parent->pid);
+        // printf("My parent is %d\n", current_task->parent->pid);
         set_current_uid(1);
         set_current_euid(1);
         set_current_gid(1);
     }
     else
     {
-        printf("My child is %d\n", current_task->children->task->pid);
+        // printf("My child is %d\n", current_task->children->task->pid);
     }
-    printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
+    // printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
     signal(2, task_1_sighandler);
     while (1)
     {
@@ -664,14 +664,14 @@ void task_read()
 
 void task_wait()
 {
-    printf("Task 5 Started\n");
+    // printf("Task 5 Started\n");
     pid_t pid;
     int status;
     while (1)
     {
         pid = _wait(&status);
         set_putchar_color(GREEN);
-        printf("Task 5: Child %d exited with status %d\n", pid, status);
+        // printf("Task 5: Child %d exited with status %d\n", pid, status);
         set_putchar_color(LIGHT_GREY);
  
         // puts("Task 5\n");
