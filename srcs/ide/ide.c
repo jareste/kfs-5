@@ -164,12 +164,12 @@ void ide_demo()
 
     ide_read_sector(0, read_buffer);
     
-    printf("MBR Signature: ");
-    for(int i = 0; i < 16; i++)
-    {
-        printf("%x ", ((uint8_t*)read_buffer)[i]);
-    }
-    printf("\n");
+    // printf("MBR Signature: ");
+    // for(int i = 0; i < 16; i++)
+    // {
+    //     printf("%x ", ((uint8_t*)read_buffer)[i]);
+    // }
+    // printf("\n");
     
     if(read_buffer[255] == 0xAA55) /* Boot signature */
     {

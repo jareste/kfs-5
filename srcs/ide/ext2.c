@@ -20,15 +20,25 @@
 #define S_IFDIR 0x4000
 #define S_IFREG 0x8000
 
+/* Structure to represent an open file.
+   (For now we support only one block per file.) */
+typedef struct
+{
+    uint32_t inode_num;   /* inode number of the file */
+    ext2_inode_t inode;   /* a copy of the file inode */
+    uint32_t pos;         /* current file position */
+} ext2_file_t;
+
 static inline int S_ISDIR(uint16_t m) { return ((m & S_IFMT) == S_IFDIR); }
 static inline int S_ISREG(uint16_t m) { return ((m & S_IFMT) == S_IFREG); }
 
 void cmd_ls();
 void cmd_cd();
 void cmd_cat();
-// void cmd_touch(const char* filename);
-// void cmd_mkdir(const char* dirname);
+void cmd_touch();
+void cmd_mkdir();
 void cmd_pwd();
+void cmd_write();
 
 static int ext2_read_inode(uint32_t inode_num, ext2_inode_t* inode);
 static int ext2_write_inode(uint32_t inode_num, const ext2_inode_t* inode);
@@ -37,9 +47,10 @@ command_t ext2_commands[] = {
     {"ls", "List directory contents", cmd_ls},
     {"cd", "Change directory", cmd_cd},
     {"cat", "Concatenate files and print on the standard output", cmd_cat},
-    // {"touch", "Change file timestamps", cmd_touch},
-    // {"mkdir", "Make directories", cmd_mkdir},
+    {"touch", "Change file timestamps", cmd_touch},
+    {"mkdir", "Make directories", cmd_mkdir},
     {"pwd", "Print name of current/working directory", cmd_pwd},
+    {"write", "Write 'Hello from ext2!' to hello.txt", cmd_write},
     {NULL, NULL, NULL}
 };
 
@@ -206,6 +217,31 @@ int ext2_format(void)
     install_all_cmds(ext2_commands, GLOBAL);
 
     printf("[ext2_format] Demo format complete. Root has 'foo' directory and 'hello.txt'.\n");
+    return 0;
+}
+
+int ext2_mount()
+{
+    ext2_superblock_t sb;
+    if (ext2_read_superblock(&sb) < 0)
+    {
+        printf("No valid ext2 found; formatting...\n");
+        return ext2_format();
+    }
+
+    ext2_group_desc_t gd;
+    static uint8_t block_buf[EXT2_BLOCK_SIZE];
+    read_block(2, block_buf);
+    memcpy(&gd, block_buf, sizeof(gd));
+    g_single_gd = gd;
+
+    ext2_read_inode(2, &g_current_dir_inode);
+    g_current_dir_inode_num = 2;
+
+    install_all_cmds(ext2_commands, GLOBAL);
+
+
+    printf("Mounted ext2 from disk successfully!\n");
     return 0;
 }
 
@@ -454,6 +490,308 @@ void cmd_cat(void)
 void cmd_pwd()
 {
     printf("/ (Not implemented yet)\n");
+}
+
+static uint32_t next_free_inode = 5;   /* In ext2_format, inodes 2-4 are in use */
+static uint32_t next_free_block = 13;  /* Blocks 10,11,12 are already used */
+
+/* Allocate a new inode number (this is a very simple scheme) */
+static uint32_t ext2_alloc_inode(void)
+{
+    if(next_free_inode > INODES_COUNT)
+    {
+        return 0;
+    }
+    return next_free_inode++;
+}
+
+static uint32_t ext2_alloc_block(void)
+{
+    if(next_free_block >= TOTAL_BLOCKS)
+    {
+        return 0;
+    }
+    return next_free_block++;
+}
+
+static int ext2_add_dir_entry(ext2_inode_t* parent_inode, uint32_t parent_inode_num, const char* name, uint32_t child_inode, uint8_t file_type)
+{
+    uint8_t block_buf[EXT2_BLOCK_SIZE];
+    uint32_t block = parent_inode->i_block[0];
+    if (block == 0)
+    {
+        block = ext2_alloc_block();
+        if (block == 0)
+        {
+            return -1;
+        }
+        parent_inode->i_block[0] = block;
+        parent_inode->i_size = EXT2_BLOCK_SIZE;
+        memset(block_buf, 0, EXT2_BLOCK_SIZE);
+        write_block(block, block_buf);
+    }
+    
+    read_block(block, block_buf);
+    uint32_t offset = 0;
+    ext2_dir_entry_t* entry = NULL;
+    while (offset < EXT2_BLOCK_SIZE)
+    {
+        entry = (ext2_dir_entry_t*)(block_buf + offset);
+        if(entry->inode == 0)
+        {
+            break;
+        }
+        uint16_t ideal_len = 4 * (((8 + entry->name_len) + 3) / 4);
+        uint16_t available = entry->rec_len - ideal_len;
+        uint16_t new_entry_size = 4 * (((8 + strlen(name)) + 3) / 4);
+        if (available >= new_entry_size)
+        {
+            entry->rec_len = ideal_len;
+            ext2_dir_entry_t* new_entry = (ext2_dir_entry_t*)((uint8_t*)entry + ideal_len);
+            new_entry->inode = child_inode;
+            new_entry->name_len = strlen(name);
+            new_entry->file_type = file_type;
+            new_entry->rec_len = available;
+            memcpy(new_entry->name, name, new_entry->name_len);
+            new_entry->name[new_entry->name_len] = '\0';
+            write_block(block, block_buf);
+            ext2_write_inode(parent_inode_num, parent_inode);
+            return 0;
+        }
+        offset += entry->rec_len;
+    }
+    return -1;
+}
+
+void cmd_mkdir()
+{
+    char* dirname;
+    puts("Enter directory name: ");
+    dirname = get_line();
+    if (strlen(dirname) == 0)
+    {
+        printf("Empty name!\n");
+        return;
+    }
+    if (ext2_lookup(&g_current_dir_inode, dirname) != 0)
+    {
+        printf("Entry '%s' already exists!\n", dirname);
+        return;
+    }
+
+    uint32_t new_inode_num = ext2_alloc_inode();
+    if(new_inode_num == 0)
+    {
+        printf("No free inodes!\n");
+        return;
+    }
+    uint32_t new_block = ext2_alloc_block();
+    if(new_block == 0)
+    {
+        printf("No free blocks!\n");
+        return;
+    }
+
+    ext2_inode_t new_dir;
+    memset(&new_dir, 0, sizeof(new_dir));
+    new_dir.i_mode = S_IFDIR | 0755;
+    new_dir.i_size = EXT2_BLOCK_SIZE;
+    new_dir.i_links_count = 2;
+    new_dir.i_block[0] = new_block;
+    ext2_write_inode(new_inode_num, &new_dir);
+
+    uint8_t block_buf[EXT2_BLOCK_SIZE];
+    memset(block_buf, 0, EXT2_BLOCK_SIZE);
+    ext2_dir_entry_t* d = (ext2_dir_entry_t*)block_buf;
+    d->inode = new_inode_num;
+    d->name_len = 1;
+    d->file_type = 2;
+    d->rec_len = 12;
+    d->name[0] = '.';
+
+    ext2_dir_entry_t* d2 = (ext2_dir_entry_t*)((uint8_t*)d + d->rec_len);
+    d2->inode = g_current_dir_inode_num;
+    d2->name_len = 2;
+    d2->file_type = 2;
+    d2->rec_len = EXT2_BLOCK_SIZE - d->rec_len;
+    d2->name[0] = '.';
+    d2->name[1] = '.';
+
+    write_block(new_block, block_buf);
+
+    if (ext2_add_dir_entry(&g_current_dir_inode, g_current_dir_inode_num, dirname, new_inode_num, 2) < 0)
+    {
+        printf("Failed to add directory entry.\n");
+        return;
+    }
+    g_current_dir_inode.i_links_count++;
+    ext2_write_inode(g_current_dir_inode_num, &g_current_dir_inode);
+
+    printf("Directory '%s' created.\n", dirname);
+}
+
+void cmd_touch()
+{
+    char* filename;
+    puts("Enter file name: ");
+    filename = get_line();
+    if (strlen(filename) == 0)
+    {
+        printf("Empty name!\n");
+        return;
+    }
+    if (ext2_lookup(&g_current_dir_inode, filename) != 0)
+    {
+        printf("Entry '%s' already exists!\n", filename);
+        return;
+    }
+
+    uint32_t new_inode_num = ext2_alloc_inode();
+    if(new_inode_num == 0)
+    {
+        printf("No free inodes!\n");
+        return;
+    }
+
+    ext2_inode_t new_file;
+    memset(&new_file, 0, sizeof(new_file));
+    new_file.i_mode = S_IFREG | 0644;
+    new_file.i_size = 0;
+    new_file.i_links_count = 1;
+    ext2_write_inode(new_inode_num, &new_file);
+
+    if (ext2_add_dir_entry(&g_current_dir_inode, g_current_dir_inode_num, filename, new_inode_num, 1) < 0)
+    {
+        printf("Failed to add file entry.\n");
+        return;
+    }
+
+    printf("File '%s' created.\n", filename);
+}
+
+int ext2_write_data(ext2_inode_t *inode, uint32_t offset, const uint8_t* data, uint32_t len)
+{
+    uint8_t block_buf[EXT2_BLOCK_SIZE];
+    uint32_t block_size = EXT2_BLOCK_SIZE;
+
+    if (inode->i_block[0] == 0)
+    {
+        inode->i_block[0] = ext2_alloc_block();
+        if (inode->i_block[0] == 0)
+        {
+            printf("ext2_write_data: No free blocks available!\n");
+            return -1;
+        }
+        memset(block_buf, 0, block_size);
+    }
+    else
+    {
+        read_block(inode->i_block[0], block_buf);
+    }
+
+    if (offset + len > block_size)
+    {
+        len = block_size - offset;
+    }
+
+    memcpy(block_buf + offset, data, len);
+    write_block(inode->i_block[0], block_buf);
+
+    if (offset + len > inode->i_size)
+    {
+        inode->i_size = offset + len;
+    }
+
+    return len;
+}
+
+ext2_file_t* ext2_open(const char* filename, const char* mode)
+{
+    uint32_t ino = ext2_lookup(&g_current_dir_inode, filename);
+    if (ino == 0)
+    {
+        printf("ext2_open: File '%s' not found!\n", filename);
+        return NULL;
+    }
+
+    ext2_file_t* file = kmalloc(sizeof(ext2_file_t));
+    if (!file)
+    {
+        printf("ext2_open: Out of memory!\n");
+        return NULL;
+    }
+
+    file->inode_num = ino;
+    ext2_read_inode(ino, &file->inode);
+
+    if (strcmp(mode, "w") == 0)
+    {
+        file->inode.i_size = 0;
+        file->pos = 0;
+        file->inode.i_block[0] = 0; 
+        ext2_write_inode(ino, &file->inode);
+    }
+    else if (strcmp(mode, "a") == 0)
+    {
+        file->pos = file->inode.i_size;
+    }
+    else
+    {
+        file->pos = 0;
+    }
+
+    return file;
+}
+
+int ext2_write(ext2_file_t* file, const void* buf, uint32_t len)
+{
+    if (!file) return -1;
+
+    int written = ext2_write_data(&file->inode, file->pos, (const uint8_t*)buf, len);
+    if (written < 0)
+    {
+        printf("ext2_write: Error writing data!\n");
+        return -1;
+    }
+    file->pos += written;
+
+    ext2_write_inode(file->inode_num, &file->inode);
+
+    return written;
+}
+
+int ext2_close(ext2_file_t* file)
+{
+    if (!file) return -1;
+
+    ext2_write_inode(file->inode_num, &file->inode);
+    kfree(file);
+    return 0;
+}
+
+void cmd_write()
+{
+    printf("Enter filename: ");
+    char* filename = get_line();
+    ext2_file_t* f = ext2_open(filename, "w");
+    if (!f)
+    {
+        printf("cmd_write_hello: Could not open 'hello.txt' for writing.\n");
+        return;
+    }
+    printf("Enter message: ");
+    char* message = get_line();
+    int n = ext2_write(f, message, strlen(message));
+    if (n < 0)
+    {
+        printf("cmd_write_hello: Error writing to file.\n");
+    }
+    else
+    {
+        printf("cmd_write_hello: Wrote %d bytes to 'hello.txt'.\n", n);
+        ext2_write(f, "\n", 1);
+    }
+    ext2_close(f);
 }
 
 /* ############################################################################# */

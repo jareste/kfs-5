@@ -40,18 +40,6 @@ static tss_entry_t tss;
 extern void load_tss();
 #include "../memory/memory.h"
 
-// void tss_init()
-// {
-//     memset(&tss, 0, sizeof(tss_entry_t));
-//     tss.ss0 = 0x10;
-//     tss.esp0 = (uint32_t)kmalloc(KB(4));
-//     ASSERT(tss.esp0);
-//     tss.iomap = sizeof(tss_entry_t);
-//     printf("TSS ESP0: %p\n", tss.esp0);
-
-//     load_tss();
-// }
-
 void tss_init()
 {
     memset(&tss, 0, sizeof(tss_entry_t));
@@ -60,7 +48,6 @@ void tss_init()
     tss.esp0 = (uint32_t)stack & 0xFFFFFFF0;
     tss.ss0 = 0x10;
     tss.iomap = sizeof(tss_entry_t);
-    printf("TSS ESP0: %p\n", tss.esp0);
     load_tss();
 }
 

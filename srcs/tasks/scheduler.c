@@ -222,7 +222,7 @@ void add_new_task(task_t* new_task)
         current->next = new_task;
         new_task->next = task_list;
     }
-    printf("Task %d added\n", new_task->pid);
+    // printf("Task %d added\n", new_task->pid);
 }
 
 static void task_exit_task(task_t* task, int signal)
@@ -239,7 +239,7 @@ static void task_exit_task(task_t* task, int signal)
     pid_t pid = task->pid;
 
     task->state = TASK_ZOMBIE;
-    printf("Task %d exited with status %d ---\n", pid, signal);
+    // printf("Task %d exited with status %d ---\n", pid, signal);
     enqueue(&finished_pid_queue, pid, signal);
     to_free = task;
 
@@ -261,7 +261,7 @@ static void task_exit()
 
 void kill_task(int signal)
 {
-    printf("Killing task %d With signal:%d--------------\n", current_task->pid, signal);
+    // printf("Killing task %d With signal:%d--------------\n", current_task->pid, signal);
     task_exit_task(current_task, signal);
 }
 
@@ -330,7 +330,7 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->gid = 0;
     init_signals(task);
     add_new_task(task);
-    printf("Task %d created\n", task->pid);
+    // printf("Task %d created\n", task->pid);
 }
 
 extern void fork_trampoline(void);
@@ -455,7 +455,7 @@ pid_t _do_fork(const cpu_state_t *parent_state)
     init_signals(child);
 
     add_new_task(child);
-    printf("Forked new task: child pid %d, parent pid %d\n", child->pid, parent->pid);
+    // printf("Forked new task: child pid %d, parent pid %d\n", child->pid, parent->pid);
     return child->pid;
 }
 
@@ -509,7 +509,7 @@ void task_1_sighandler(int signal)
 
 void task_1(void)
 {
-    puts("Task 1 Started\n");
+    // puts("Task 1 Started\n");
 
     size_t mmap_size = 16 * 1024;
     void* user_buffer = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE | PROT_USER,
@@ -531,7 +531,7 @@ void task_1(void)
     }
 
     munmap(user_buffer, mmap_size);
-    puts_color("test_mmap: mmap/munmap test passed\n", GREEN);
+    // puts_color("test_mmap: mmap/munmap test passed\n", GREEN);
 
     signal(2, task_1_sighandler);
 
@@ -549,12 +549,12 @@ void task_1(void)
 
 void task_2_exit()
 {
-    puts_color("Task 2 exited\n", RED);
+    // puts_color("Task 2 exited\n", RED);
 }
 
 void task_2(void)
 {
-    puts("Task 2 Started\n");
+    // puts("Task 2 Started\n");
     int i = 0;
     i = 0;
     while (i < 500)
@@ -570,13 +570,13 @@ void task_2(void)
 
 void task_socket_send()
 {
-    puts("Task SOCKSEND Started\n");
+    // puts("Task SOCKSEND Started\n");
     int i = 0;
     i = 0;
     int sockfd;
     sockfd = _socket();
     /* We assume this must be 0 */
-    printf("Socket fd: %d\n", sockfd);
+    // printf("Socket fd: %d\n", sockfd);
     while (1)
     {
         socket_send(sockfd, "Hello, world!\n", 14);
@@ -587,11 +587,11 @@ void task_socket_send()
 
 void task_socket_recv()
 {
-    puts("Task SOCKRECV Started\n");
+    // puts("Task SOCKRECV Started\n");
 
     int sockfd;
     sockfd = socket_connect(0);
-    printf("Socket fd: %d\n", sockfd);
+    // printf("Socket fd: %d\n", sockfd);
     while (1)
     {
         char buffer[16];
@@ -623,22 +623,22 @@ void test_recursion(void)
 
 void task_read()
 {
-    printf("Task 4 Started\n");
+    // printf("Task 4 Started\n");
     int i;
     i = _fork();
-    printf("Forked: %d\n", i);
+    // printf("Forked: %d\n", i);
     if (i == 0)
     {
-        printf("My parent is %d\n", current_task->parent->pid);
+        // printf("My parent is %d\n", current_task->parent->pid);
         set_current_uid(1);
         set_current_euid(1);
         set_current_gid(1);
     }
     else
     {
-        printf("My child is %d\n", current_task->children->task->pid);
+        // printf("My child is %d\n", current_task->children->task->pid);
     }
-    printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
+    // printf("Task uid: %d, euid: %d. guid: %d\n", get_current_uid(), get_current_euid(), get_current_gid());
     signal(2, task_1_sighandler);
     while (1)
     {
@@ -664,14 +664,14 @@ void task_read()
 
 void task_wait()
 {
-    printf("Task 5 Started\n");
+    // printf("Task 5 Started\n");
     pid_t pid;
     int status;
     while (1)
     {
         pid = _wait(&status);
         set_putchar_color(GREEN);
-        printf("Task 5: Child %d exited with status %d\n", pid, status);
+        // printf("Task 5: Child %d exited with status %d\n", pid, status);
         set_putchar_color(LIGHT_GREY);
  
         // puts("Task 5\n");
@@ -690,7 +690,7 @@ void start_foo_tasks(void)
     create_task(task_socket_send, "task_socket_send", NULL);
     create_task(task_socket_recv, "task_socket_recv", NULL);
     to_free = NULL;
-    printf("current_task: %p\n", current_task);
+    // printf("current_task: %p\n", current_task);
 }
 
 /* ################################################################### */
