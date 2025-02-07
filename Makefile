@@ -81,7 +81,7 @@ fclean: clean
 re: fclean all
 
 run:
-	qemu-system-i386 -kernel kernel.bin -drive file=disk.img,if=ide,index=0,media=disk
+	qemu-system-i386 -kernel kernel.bin -drive file=disk.img,if=ide,index=0,media=disk,format=raw
 
 	# qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
 
@@ -101,8 +101,18 @@ xorriso:
 	xorriso -indev $(NAME) -ls /boot/grub/
 
 crdisk:
-	qemu-img create -f raw disk.img 100M
+	qemu-img create -f raw disk.img 10M
 	dd if=/dev/zero of=disk.img bs=512 count=20480
+
+crhello:
+	gcc -nostdlib -nostartfiles -Os -s -ffunction-sections -fdata-sections \
+	-Wl,--gc-sections -fno-asynchronous-unwind-tables -fno-pie -no-pie \
+	-o hello test/hello.c
+
+format: crdisk
+	cc ext2_format.c -o ext2_format
+	./ext2_format disk.img
+	rm ext2_format 
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso
 

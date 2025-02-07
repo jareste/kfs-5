@@ -32,6 +32,7 @@ typedef struct
     uint16_t s_def_resuid;
     uint16_t s_def_resgid;
 } ext2_superblock_t;
+#pragma pack(pop)
 
 #pragma pack(push, 1)
 typedef struct

@@ -214,8 +214,6 @@ int ext2_format(void)
     ext2_read_inode(2, &g_current_dir_inode);
     g_current_dir_inode_num = 2;
 
-    install_all_cmds(ext2_commands, GLOBAL);
-
     printf("[ext2_format] Demo format complete. Root has 'foo' directory and 'hello.txt'.\n");
     return 0;
 }
@@ -226,7 +224,8 @@ int ext2_mount()
     if (ext2_read_superblock(&sb) < 0)
     {
         printf("No valid ext2 found; formatting...\n");
-        return ext2_format();
+        install_all_cmds(ext2_commands, GLOBAL);
+        return 0;
     }
 
     ext2_group_desc_t gd;
