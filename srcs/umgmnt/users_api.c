@@ -15,6 +15,13 @@ static command_t users_commands[] = {
     {NULL, NULL, NULL}
 };
 
+static user_t g_current_user;
+
+bool current_user_is_valid()
+{
+    return g_current_user.is_valid;
+}
+
 static int login(char *username, char *password)
 {
     user_t u;
@@ -30,6 +37,7 @@ static int login(char *username, char *password)
         return -1;
     }
 
+    memcpy(&g_current_user, &u, sizeof(user_t));
     printf("Login successful as '%s'.\n", username);
     return 0;
 }
@@ -94,4 +102,5 @@ static void cmd_create_user()
 void init_users_api()
 {
     install_all_cmds(users_commands, GLOBAL);
+    g_current_user.is_valid = false;
 }

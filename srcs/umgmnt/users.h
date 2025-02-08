@@ -28,6 +28,6 @@ void init_users_api();
 void list_users();
 
 bool user_exists(const char *name);
-// int login(char *username, char *password);
+bool current_user_is_valid();
 
 #endif

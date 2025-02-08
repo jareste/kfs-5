@@ -4,6 +4,7 @@
 #include "../utils/utils.h"
 #include "../timers/timers.h"
 #include "../syscall_wrappers/stdlib.h"
+#include "../umgmnt/users.h"
 #include "kshell.h"
 
 #define MAX_COMMANDS 256
@@ -483,6 +484,17 @@ void kshell()
     {
         printf("jareste-OS> ");
         buffer = get_line();
+
+        if (*buffer == 0)
+            continue;
+
+        /* Comment this for working without wanting to burn the computer
+         */
+        if (!current_user_is_valid() && strcmp(buffer, "login") != 0)
+        {
+            printf("Please login first\n");
+            continue;
+        }
 
         if (check_global_cmd(buffer))
             continue;

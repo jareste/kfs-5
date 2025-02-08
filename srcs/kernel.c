@@ -30,7 +30,6 @@ void kernel_main()
     ide_demo();
 
     ext2_mount();
-    ext2_demo();
 
     init_users_api();
 
