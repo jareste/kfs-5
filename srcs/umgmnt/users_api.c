@@ -15,13 +15,16 @@ static command_t users_commands[] = {
 
 static int login(char *username, char *password)
 {
-    user_t u = find_user_by_name(username);
-    if (!u.is_valid)
+    user_t u;
+    if (find_user_by_name(username, &u) == false)
     {
         printf("User '%s' not found.\n", username);
         return -1;
     }
 
+    puts_color("User found!", GREEN);
+    puts_color(password, GREEN);
+    putc_color('\n', GREEN);
     if (check_password(password, u.pass_hash) == 0)
     {
         printf("Invalid password.\n");
@@ -43,12 +46,17 @@ static void cmd_login()
     buffer = get_line();
     strcpy(username, buffer);
     printf("Password: ");
-    start_ofuscation();
+    // start_ofuscation();
     buffer = get_line();
-    stop_ofuscation();
+    // stop_ofuscation();
     strcpy(password, buffer);
 
+    set_putchar_color(GREEN);
+    printf("Login user: %s\n", username);
+    printf("Password: %s\n", password);
+
     login(username, password);
+    set_putchar_color(LIGHT_GREY);
 }
 
 static void cmd_logout()

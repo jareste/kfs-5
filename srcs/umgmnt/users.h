@@ -19,7 +19,7 @@ typedef struct
     bool is_valid;        /* Mark entry as active/deleted */
 } user_t;
 
-user_t find_user_by_name(const char *name);
+bool find_user_by_name(const char *name, user_t* u);
 int check_password(const char *password, const char *encrypt);
 int encrypt_password(const char *password, char *encrypt);
 void add_user(user_t *new_user);

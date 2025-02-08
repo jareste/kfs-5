@@ -40,12 +40,12 @@ void kernel_main()
     new_user.home_inode = 2;
     new_user.shell_inode = 3;
     new_user.is_valid = true;
+    printf("Kernel end: %x\n", &endkernel);
     add_user(&new_user);
 
 
     user_t root;
-    root = find_user_by_name("user");
-    if (root.is_valid)
+    if (find_user_by_name("user", &root))
     {
         printf("User '%s' found!\n", root.name);
         printf("User: %s\n", root.name);
@@ -72,10 +72,10 @@ void kernel_main()
     // login("root", "123456");
     list_users();
 
-    kshell();
-    // scheduler_init();
-    // start_foo_tasks();
-    // scheduler();
+    // kshell();
+    scheduler_init();
+    start_foo_tasks();
+    scheduler();
 
     while (1)
     {

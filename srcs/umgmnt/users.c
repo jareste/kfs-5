@@ -5,31 +5,33 @@
 
 #include "../display/display.h"
 
-user_t find_user_by_name(const char *name)
+bool find_user_by_name(const char *name, user_t* u)
 {
     ext2_file_t *fp = ext2_open("users.config", "rb");
     if (!fp)
     {
-        return (user_t){ .is_valid = false };
+        return false;
     }
-    user_t u;
 
-    while (ext2_read(fp, &u, sizeof(user_t)))
+    while (ext2_read(fp, u, sizeof(user_t)))
     {
-        if (u.is_valid && strcmp(u.name, name) == 0)
+        if (u->is_valid && strcmp(u->name, name) == 0)
         {
             ext2_close(fp);
-            return u;
+            printf("---------------------------\n");
+            return true;
         }
     }
 
     ext2_close(fp);
-    return (user_t){ .is_valid = false };
+    printf("***********************************\n");
+    return false;
 }
 
 bool user_exists(const char *name)
 {
-    return find_user_by_name(name).is_valid;
+    user_t u;
+    return find_user_by_name(name, &u);
 }
 
 void add_user(user_t *new_user)
