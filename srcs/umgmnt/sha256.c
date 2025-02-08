@@ -147,5 +147,8 @@ int check_password(const char *password, const char *encrypt)
 {
     char encrypt_buf[65];
     encrypt_password(password, encrypt_buf);
+    printf("buf buf: %s\n", encrypt_buf);
+    printf("encrypt: %s\n", encrypt);
+    printf("strcmp: %d\n", strcmp(encrypt, encrypt_buf) == 0);
     return strcmp(encrypt, encrypt_buf) == 0;
 }

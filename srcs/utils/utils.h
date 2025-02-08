@@ -45,6 +45,7 @@ void kernel_panic_(char* msg, const char* file, int line, const char* func_name)
 extern void dump_registers();
 void *memcpy(void *dest, const void *src, size_t n);
 int memcmp(const void* s1, const void* s2, size_t n);
+char *strcpy(char *dest, const char *src);
 
 #define ASSERT(x)   if (!(x)) { kernel_panic("Assertion failed: " #x); }
 #define NEVER_HERE  kernel_panic("NEVER_HERE")

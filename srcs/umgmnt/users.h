@@ -21,5 +21,12 @@ typedef struct
 
 user_t find_user_by_name(const char *name);
 int check_password(const char *password, const char *encrypt);
+int encrypt_password(const char *password, char *encrypt);
+void add_user(user_t *new_user);
+
+void init_users_api();
+void list_users();
+
+// int login(char *username, char *password);
 
 #endif

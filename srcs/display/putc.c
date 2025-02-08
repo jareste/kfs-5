@@ -4,6 +4,18 @@ static int cursor_position = 0;
 
 static int color = LIGHT_GREY;
 
+static bool ofuscated = false;
+
+void start_ofuscation()
+{
+    ofuscated = true;
+}
+
+void stop_ofuscation()
+{
+    ofuscated = false;
+}
+
 void set_putchar_color(uint8_t c)
 {
     color = c;
@@ -138,6 +150,11 @@ void move_cursor_down()
 void putc_color(char c, uint8_t color)
 {
     char *video_memory = (char *)VIDEO_MEMORY;
+
+    if (ofuscated)
+    {
+        c = c == '\n' ? c : '*';
+    }
 
     if (c == '\n')
     {

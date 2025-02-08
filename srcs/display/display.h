@@ -52,4 +52,7 @@ void move_cursor_up();
 void move_cursor_down();
 void delete_actual_char();
 
+void start_ofuscation();
+void stop_ofuscation();
+
 #endif
