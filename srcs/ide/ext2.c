@@ -16,6 +16,8 @@
 #define BLOCKS_PER_GROUP 8192
 #define INODES_PER_GROUP 1024
 
+#define MAX_PATH_LENGTH 256
+
 void cmd_ls();
 void cmd_cd();
 void cmd_cat();
@@ -41,6 +43,10 @@ command_t ext2_commands[] = {
 static uint32_t g_current_dir_inode_num = 2; /* root inode is #2 */
 static ext2_inode_t g_current_dir_inode;
 static ext2_group_desc_t g_single_gd;
+static uint32_t next_free_inode = 5;   /* In ext2_format, inodes 2-4 are in use */
+static uint32_t next_free_block = 13;  /* Blocks 10,11,12 are already used */
+
+static char g_path[MAX_PATH_LENGTH];
 
 static void write_block(uint32_t block_num, const void* buf)
 {
@@ -202,6 +208,67 @@ int ext2_format(void)
     return 0;
 }
 
+static uint32_t recalc_next_free_block(void)
+{
+    uint8_t *used = kmalloc((TOTAL_BLOCKS + 1) * sizeof(uint8_t));
+    if (!used)
+    {
+        printf("Failed to allocate memory for block scan.\n");
+        return 0;
+    }
+    
+    for (uint32_t b = 0; b < 5; b++)
+    {
+        used[b] = 1;
+    }
+    used[5] = 1;
+    used[10] = used[11] = used[12] = 1;
+    
+    ext2_inode_t inode;
+    for (uint32_t ino = 1; ino <= INODES_COUNT; ino++)
+    {
+        ext2_read_inode(ino, &inode);
+        if (inode.i_mode != 0)
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                if (inode.i_block[i] != 0 && inode.i_block[i] < TOTAL_BLOCKS)
+                {
+                    used[inode.i_block[i]] = 1;
+                }
+            }
+        }
+    }
+    
+    uint32_t free_block = 0;
+    for (uint32_t b = 1; b < TOTAL_BLOCKS; b++)
+    {
+        if (!used[b])
+        {
+            free_block = b;
+            break;
+        }
+    }
+    kfree(used);
+    return free_block;
+}
+
+static uint32_t recalc_next_free_inode(void)
+{
+    ext2_inode_t inode;
+
+    for (uint32_t ino = 5; ino <= INODES_COUNT; ino++)
+    {
+        ext2_read_inode(ino, &inode);
+        if (inode.i_mode == 0)
+        {
+            return ino;
+        }
+    }
+    return 0;
+}
+
+
 int ext2_mount()
 {
     ext2_superblock_t sb;
@@ -218,11 +285,17 @@ int ext2_mount()
     memcpy(&gd, block_buf, sizeof(gd));
     g_single_gd = gd;
 
+    next_free_inode = recalc_next_free_inode();
+    next_free_block = recalc_next_free_block();
+
     ext2_read_inode(2, &g_current_dir_inode);
     g_current_dir_inode_num = 2;
 
     install_all_cmds(ext2_commands, GLOBAL);
+    memset(g_path, 0, MAX_PATH_LENGTH);
+    g_path[0] = '/';
 
+    printf("next_free_inode=%d, next_free_block=%d\n", next_free_inode, next_free_block);
 
     printf("Mounted ext2 from disk successfully!\n");
     return 0;
@@ -401,32 +474,80 @@ int ext2_list_dir(const ext2_inode_t* dir_inode)
     return 0;
 }
 
-void cmd_cd()
+void update_path(const char* name)
 {
-    char* dirname;
+    int i;
 
-    puts("Enter directory name: ");
-    dirname = get_line();
-    if(strcmp(dirname, ".") == 0)
+    if(strcmp(name, ".") == 0)
     {
         return;
     }
 
-    uint32_t target_ino = ext2_lookup(&g_current_dir_inode, dirname);
-    if(target_ino == 0)
+    i = strlen(g_path);
+
+    if(strcmp(name, "..") == 0)
+    {
+        if (i == 1)
+        {
+            return;
+        }
+
+        while (g_path[i] != '/')
+        {
+            i--;
+        }
+        if (i > 0)
+            g_path[i] = '\0';
+        else
+            g_path[i + 1] = '\0';
+
+        return;
+    }
+
+    if (i > 1)
+    {
+        g_path[i] = '/';
+        i++;
+        g_path[i] = '\0';
+    }
+
+    while (*name)
+    {
+        g_path[i] = *name;
+        i++;
+        name++;
+    }
+
+}
+
+void cmd_cd()
+{
+    char* dirname;
+    ext2_inode_t tmp;
+    uint32_t target_ino;
+
+    puts("Enter directory name: ");
+    dirname = get_line();
+    if (strcmp(dirname, ".") == 0)
+    {
+        return;
+    }
+
+    target_ino = ext2_lookup(&g_current_dir_inode, dirname);
+    if (target_ino == 0)
     {
         printf("Directory not found!\n");
         return;
     }
 
-    ext2_inode_t tmp;
     ext2_read_inode(target_ino, &tmp);
-    if(!S_ISDIR(tmp.i_mode))
+    if (!S_ISDIR(tmp.i_mode))
     {
         printf("%s is not a directory!\n", dirname);
         return;
     }
 
+    update_path(dirname);
     g_current_dir_inode_num = target_ino;
     memcpy(&g_current_dir_inode, &tmp, sizeof(ext2_inode_t));
 }
@@ -472,11 +593,9 @@ void cmd_cat(void)
 
 void cmd_pwd()
 {
-    printf("/ (Not implemented yet)\n");
+    puts(g_path);
+    putc('\n');
 }
-
-static uint32_t next_free_inode = 5;   /* In ext2_format, inodes 2-4 are in use */
-static uint32_t next_free_block = 13;  /* Blocks 10,11,12 are already used */
 
 /* Allocate a new inode number (this is a very simple scheme) */
 static uint32_t ext2_alloc_inode(void)

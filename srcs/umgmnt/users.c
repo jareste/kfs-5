@@ -7,7 +7,9 @@
 
 bool find_user_by_name(const char *name, user_t* u)
 {
-    ext2_file_t *fp = ext2_open("users.config", "rb");
+    ext2_file_t *fp;
+    
+    fp = ext2_open("users.config", "rb");
     if (!fp)
     {
         return false;
@@ -34,12 +36,14 @@ bool user_exists(const char *name)
 
 void add_user(user_t *new_user)
 {
+    ext2_file_t *fp;
+
     if (user_exists(new_user->name))
     {
         printf("User '%s' already exists.\n", new_user->name);
         return;
     }
-    ext2_file_t *fp = ext2_open("users.config", "a");
+    fp = ext2_open("users.config", "a");
     if (!fp)
     {
         return;
@@ -50,12 +54,14 @@ void add_user(user_t *new_user)
 
 void list_users()
 {
-    ext2_file_t *fp = ext2_open("users.config", "rb");
+    ext2_file_t *fp;
+    user_t u;
+
+    fp = ext2_open("users.config", "rb");
     if (!fp)
     {
         return;
     }
-    user_t u;
 
     while (ext2_read(fp, &u, sizeof(user_t)))
     {

@@ -36,16 +36,14 @@ void kernel_main()
 
     list_users();
 
-    // kshell();
+    // kshell(); /* Uncomment this line to not run the scheduler */
     scheduler_init();
     start_foo_tasks();
     scheduler();
 
+    /* Keep CPU busy */
     while (1)
     {
     }
-    kshell();
-    printf("Exiting shell...\n");
-    /* Keep CPU busy */
     
 }
