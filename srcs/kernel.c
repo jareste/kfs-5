@@ -32,44 +32,8 @@ void kernel_main()
     ext2_mount();
     ext2_demo();
 
-    user_t new_user;
-    strcpy(new_user.name, "user");
-    encrypt_password("123456", new_user.pass_hash);
-    new_user.uid = 1000;
-    new_user.gid = 1000;
-    new_user.home_inode = 2;
-    new_user.shell_inode = 3;
-    new_user.is_valid = true;
-    printf("Kernel end: %x\n", &endkernel);
-    add_user(&new_user);
-
-
-    user_t root;
-    if (find_user_by_name("user", &root))
-    {
-        printf("User '%s' found!\n", root.name);
-        printf("User: %s\n", root.name);
-        printf("UID: %d\n", root.uid);
-        printf("GID: %d\n", root.gid);
-        printf("Home inode: %d\n", root.home_inode);
-        printf("Pass: %s\n", root.pass_hash);
-        if (check_password("123456", root.pass_hash))
-        {
-            printf("Password correct!\n");
-        }
-        else
-        {
-            printf("Password incorrect!\n");
-        }
-    }
-    else
-    {
-        printf("User 'root' not found!\n");
-    }
-
     init_users_api();
 
-    // login("root", "123456");
     list_users();
 
     // kshell();

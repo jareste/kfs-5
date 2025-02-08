@@ -6,10 +6,12 @@
 
 static void cmd_logout();
 static void cmd_login();
+static void cmd_create_user();
 
 static command_t users_commands[] = {
     {"login", "Login to the system", cmd_login},
     {"logout", "Logout from the system", cmd_logout},
+    {"cruser", "Create a new user", cmd_create_user},
     {NULL, NULL, NULL}
 };
 
@@ -53,6 +55,40 @@ static void cmd_login()
 static void cmd_logout()
 {
     printf("Logout done!\n");
+}
+
+static void cmd_create_user()
+{
+    user_t u;
+    char buffer[SHA256_HEX_LEN + 1];
+    char *pass;
+
+    printf("Enter username: ");
+    strcpy(u.name, get_line());
+    if (user_exists(u.name))
+    {
+        printf("User '%s' already exists.\n", u.name);
+        return;
+    }
+
+    printf("Enter password: ");
+    start_ofuscation();
+    pass = get_line();
+    stop_ofuscation();
+    encrypt_password(pass, buffer);
+    strcpy(u.pass_hash, buffer);
+
+    printf("Enter UID: ");
+    u.uid = strtol(get_line(), NULL, 10);
+    printf("Enter GID: ");
+    u.gid = strtol(get_line(), NULL, 10);
+    printf("Enter home inode: ");
+    u.home_inode = strtol(get_line(), NULL, 10);
+    printf("Enter shell inode: ");
+    u.shell_inode = strtol(get_line(), NULL, 10);
+    u.is_valid = true;
+
+    add_user(&u);
 }
 
 void init_users_api()
