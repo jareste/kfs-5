@@ -18,13 +18,11 @@ bool find_user_by_name(const char *name, user_t* u)
         if (u->is_valid && strcmp(u->name, name) == 0)
         {
             ext2_close(fp);
-            printf("---------------------------\n");
             return true;
         }
     }
 
     ext2_close(fp);
-    printf("***********************************\n");
     return false;
 }
 

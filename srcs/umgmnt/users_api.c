@@ -22,17 +22,13 @@ static int login(char *username, char *password)
         return -1;
     }
 
-    puts_color("User found!", GREEN);
-    puts_color(password, GREEN);
-    putc_color('\n', GREEN);
     if (check_password(password, u.pass_hash) == 0)
     {
         printf("Invalid password.\n");
         return -1;
     }
-    puts("Login successful\n");
 
-    printf("Login successful %s\n", username);
+    printf("Login successful as '%s'.\n", username);
     return 0;
 }
 
@@ -46,17 +42,12 @@ static void cmd_login()
     buffer = get_line();
     strcpy(username, buffer);
     printf("Password: ");
-    // start_ofuscation();
+    start_ofuscation();
     buffer = get_line();
-    // stop_ofuscation();
+    stop_ofuscation();
     strcpy(password, buffer);
 
-    set_putchar_color(GREEN);
-    printf("Login user: %s\n", username);
-    printf("Password: %s\n", password);
-
     login(username, password);
-    set_putchar_color(LIGHT_GREY);
 }
 
 static void cmd_logout()
