@@ -19,7 +19,8 @@ GRUB_DIR = $(ISO_DIR)/boot/grub
 
 vpath %.c $(SRC_DIR) $(SRC_DIR)/utils $(SRC_DIR)/display $(SRC_DIR)/keyboard $(SRC_DIR)/gdt \
 			$(SRC_DIR)/idt $(SRC_DIR)/kshell $(SRC_DIR)/io $(SRC_DIR)/timers $(SRC_DIR)/memory \
-			$(SRC_DIR)/syscalls $(SRC_DIR)/tasks $(SRC_DIR)/sockets $(SRC_DIR)/ide
+			$(SRC_DIR)/syscalls $(SRC_DIR)/tasks $(SRC_DIR)/sockets $(SRC_DIR)/ide \
+			$(SRC_DIR)/umgmnt
 
 vpath %.asm $(BOOT_DIR) $(SRC_DIR)/keyboard $(SRC_DIR)/gdt $(SRC_DIR)/utils $(SRC_DIR)/tasks \
 			$(SRC_DIR)/syscall_wrappers
@@ -29,7 +30,7 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c \
 			io.c init_timers.c memory.c put_zu.c pmm.c memcpy.c memcmp.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
-			scheduler.c sockets.c queue.c ide.c ext2.c
+			scheduler.c sockets.c queue.c ide.c ext2.c users.c sha256.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
 			  clear_registers.asm tasks.asm write.asm kill.asm \
@@ -111,8 +112,9 @@ crhello:
 
 format: crdisk
 	cc ext2_format.c -o ext2_format
-	./ext2_format disk.img
-	rm ext2_format 
+	cp config/users.config .
+	./ext2_format disk.img users.config
+	rm ext2_format users.config
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso
 

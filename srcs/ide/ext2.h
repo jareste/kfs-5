@@ -3,6 +3,13 @@
 
 #include "../utils/stdint.h"
 
+#define S_IFMT  0xF000
+#define S_IFDIR 0x4000
+#define S_IFREG 0x8000
+
+static inline int S_ISDIR(uint16_t m) { return ((m & S_IFMT) == S_IFDIR); }
+static inline int S_ISREG(uint16_t m) { return ((m & S_IFMT) == S_IFREG); }
+
 #pragma pack(push, 1)
 typedef struct
 {
@@ -83,6 +90,15 @@ typedef struct
 } ext2_dir_entry_t;
 #pragma pack(pop)
 
+/* Structure to represent an open file.
+   (For now we support only one block per file.) */
+typedef struct
+{
+    uint32_t inode_num;   /* inode number of the file */
+    ext2_inode_t inode;   /* a copy of the file inode */
+    uint32_t pos;         /* current file position */
+} ext2_file_t;
+
 int ext2_format(void);
 
 int ext2_mount();
@@ -90,5 +106,11 @@ int ext2_mount();
 int ext2_read_superblock(ext2_superblock_t* sb);
 
 void ext2_demo();
+
+int ext2_write(ext2_file_t* file, const void* buf, uint32_t len);
+int ext2_close(ext2_file_t* file);
+int ext2_write(ext2_file_t* file, const void* buf, uint32_t len);
+ext2_file_t* ext2_open(const char* filename, const char* mode);
+int ext2_read(ext2_file_t* file, void* buf, uint32_t len);
 
 #endif // EXT_2

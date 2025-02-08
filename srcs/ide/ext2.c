@@ -16,22 +16,6 @@
 #define BLOCKS_PER_GROUP 8192
 #define INODES_PER_GROUP 1024
 
-#define S_IFMT  0xF000
-#define S_IFDIR 0x4000
-#define S_IFREG 0x8000
-
-/* Structure to represent an open file.
-   (For now we support only one block per file.) */
-typedef struct
-{
-    uint32_t inode_num;   /* inode number of the file */
-    ext2_inode_t inode;   /* a copy of the file inode */
-    uint32_t pos;         /* current file position */
-} ext2_file_t;
-
-static inline int S_ISDIR(uint16_t m) { return ((m & S_IFMT) == S_IFDIR); }
-static inline int S_ISREG(uint16_t m) { return ((m & S_IFMT) == S_IFREG); }
-
 void cmd_ls();
 void cmd_cd();
 void cmd_cat();
@@ -757,6 +741,21 @@ int ext2_write(ext2_file_t* file, const void* buf, uint32_t len)
     ext2_write_inode(file->inode_num, &file->inode);
 
     return written;
+}
+
+int ext2_read(ext2_file_t* file, void* buf, uint32_t len)
+{
+    if (!file) return -1;
+
+    int read = ext2_read_data(&file->inode, file->pos, len, (uint8_t*)buf);
+    if (read < 0)
+    {
+        printf("ext2_read: Error reading data!\n");
+        return -1;
+    }
+    file->pos += read;
+
+    return read;
 }
 
 int ext2_close(ext2_file_t* file)
