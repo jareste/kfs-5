@@ -29,7 +29,7 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c \
 			io.c init_timers.c memory.c put_zu.c pmm.c memcpy.c memcmp.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
-			scheduler.c sockets.c queue.c ide.c
+			scheduler.c sockets.c queue.c ide.c ext2.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
 			  clear_registers.asm tasks.asm write.asm kill.asm \
@@ -81,7 +81,9 @@ fclean: clean
 re: fclean all
 
 run:
-	qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
+	qemu-system-i386 -kernel kernel.bin -drive file=disk.img,if=ide,index=0,media=disk,format=raw
+
+	# qemu-system-i386 -kernel $(BIN_NAME) #-m 4096
 
 run_debug:
 	qemu-system-i386 -kernel $(BIN_NAME) -d int,cpu_reset #-m 4096
@@ -97,6 +99,20 @@ debug:
 
 xorriso:
 	xorriso -indev $(NAME) -ls /boot/grub/
+
+crdisk:
+	qemu-img create -f raw disk.img 10M
+	dd if=/dev/zero of=disk.img bs=512 count=20480
+
+crhello:
+	gcc -nostdlib -nostartfiles -Os -s -ffunction-sections -fdata-sections \
+	-Wl,--gc-sections -fno-asynchronous-unwind-tables -fno-pie -no-pie \
+	-o hello test/hello.c
+
+format: crdisk
+	cc ext2_format.c -o ext2_format
+	./ext2_format disk.img
+	rm ext2_format 
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso
 

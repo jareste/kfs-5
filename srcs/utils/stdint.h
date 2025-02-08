@@ -48,6 +48,9 @@ typedef unsigned long size_t;
 typedef unsigned int uid_t;
 typedef unsigned int gid_t;
 
+/* Time type */
+typedef unsigned long time_t;
+
 /* Limits of exact-width integer types */
 #define INT8_MIN (-128)
 #define INT16_MIN (-32768)

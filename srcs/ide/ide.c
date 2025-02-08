@@ -4,6 +4,13 @@
 #include "../memory/memory.h"
 #include "../display/display.h"
 
+#define IDE_SECTOR_SIZE 512
+
+#define MAX_LBA 0x0FFFFFFF
+
+#define le16_to_cpu(x) ((x) >> 8) | ((x) << 8)
+#define le32_to_cpu(x) ((x) >> 24) | (((x) & 0xFF0000) >> 8) | (((x) & 0xFF00) << 8) | ((x) << 24)
+
 /* TODO move semaphores to it's own file */
 #define atomic_load(ptr) __atomic_load_n(ptr, __ATOMIC_SEQ_CST)
 #define atomic_store(ptr, val) __atomic_store_n(ptr, val, __ATOMIC_SEQ_CST)
@@ -56,9 +63,7 @@ static void ide_select_drive(uint32_t lba)
 
 void ide_read_sector(uint32_t lba, uint16_t* buffer)
 {
-    printf("IDE Read LBA: %d\n", lba);
     uint8_t status = inb(IDE_STATUS);
-    printf("Pre-command status: %x\n", status);
     disable_interrupts();
     
     ide_wait_nonbusy();
@@ -81,13 +86,25 @@ void ide_read_sector(uint32_t lba, uint16_t* buffer)
 
     for (int i = 0; i < 256; i++)
     {
-        uint16_t word = inw(IDE_DATA);
-        buffer[i] = (word << 8) | (word >> 8);
+        // uint16_t word = inw(IDE_DATA);
+        // buffer[i] = (word << 8) | (word >> 8);
+        buffer[i] = inw(IDE_DATA);
     }
     
     enable_interrupts();
     status = inb(IDE_STATUS);
-    printf("Post-command status: %x\n", status);
+}
+
+int ide_read_sectors(uint32_t lba, uint8_t count, void* buffer)
+{
+    if (lba > MAX_LBA || count == 0 || count > 256) return -1;
+    
+    uint16_t* buf = (uint16_t*)buffer;
+    for (uint8_t i = 0; i < count; i++)
+    {
+        ide_read_sector(lba + i, buf + (i * IDE_SECTOR_SIZE/2));
+    }
+    return 0;
 }
 
 void ide_write_sector(uint32_t lba, uint16_t* buffer)
@@ -147,12 +164,12 @@ void ide_demo()
 
     ide_read_sector(0, read_buffer);
     
-    printf("MBR Signature: ");
-    for(int i = 0; i < 16; i++)
-    {
-        printf("%x ", ((uint8_t*)read_buffer)[i]);
-    }
-    printf("\n");
+    // printf("MBR Signature: ");
+    // for(int i = 0; i < 16; i++)
+    // {
+    //     printf("%x ", ((uint8_t*)read_buffer)[i]);
+    // }
+    // printf("\n");
     
     if(read_buffer[255] == 0xAA55) /* Boot signature */
     {
@@ -164,11 +181,11 @@ void ide_demo()
         write_buffer[i] = (i << 8) | (i & 0xFF);
     }
 
-    ide_write_sector(100, write_buffer);
+    ide_write_sector(1000, write_buffer);
 
     ide_flush();
     
-    ide_read_sector(100, read_buffer);
+    ide_read_sector(1000, read_buffer);
     
     if(memcmp(write_buffer, read_buffer, 512))
     {
