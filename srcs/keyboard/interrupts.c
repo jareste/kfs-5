@@ -190,7 +190,7 @@ void init_interrupts()
     idt_set_gate(46, (uint32_t)irq_handler_14); /* Primary ATA Hard Disk */
     idt_set_gate(47, (uint32_t)irq_handler_15); /* Secondary ATA Hard Disk */
 
-    idt_set_gate(0x80, (uint32_t)syscall_handler_asm);
+    idt_set_gate(0x30, (uint32_t)syscall_handler_asm);
 
     register_idt();
     ide_init();

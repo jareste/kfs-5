@@ -1,4 +1,4 @@
-%define syscall int 0x80
+%define syscall int 0x30
 
 global get_pid
 get_pid:

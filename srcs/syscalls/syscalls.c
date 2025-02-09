@@ -151,6 +151,7 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
     uint32_t arg5 = reg.edi;
     uint32_t arg6 = reg.ebp;
 
+    // printf("Syscall: %d\n", syscall_number);
     if (syscall_number >= MAX_SYSCALLS)
     {
         printf("Unknown syscall: %d\n", syscall_number);
