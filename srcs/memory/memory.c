@@ -635,6 +635,19 @@ int munmap(void* addr, size_t length)
 }
 
 
+void make_page_user(uintptr_t addr)
+{
+    uint32_t pd_index = addr >> 22;
+    uint32_t pt_index = (addr >> 12) & 0x3FF;
+    if (page_directory[pd_index] & PAGE_PRESENT)
+    {
+        page_directory[pd_index] |= PAGE_USER;
+        page_table_t* pt = (page_table_t*)(page_directory[pd_index] & ~0xFFF);
+        (*pt)[pt_index] |= PAGE_USER;
+        asm volatile("invlpg (%0)" :: "r"(addr) : "memory");
+    }
+}
+
 /*############################################################################*/
 /*                                                                            */
 /*                           TESTS                                            */

@@ -59,7 +59,9 @@ syscall_handler_asm:
 	; this shouldnt be here
 	; mov eax, 0x20
 	; out 0x20, al
-    iret
+    ; .kkkk:
+	; jmp .kkkk
+	iret
 
 ; handles irqs (hardware interrupts)
 common_irq_handler:

@@ -12,6 +12,7 @@
 
 #define STACK_SIZE 4096
 #define MAX_ACTIVE_TASKS 15
+#define USER_STACK_SIZE 4096
 
 void kernel_main();
 void task_1(void);
@@ -19,6 +20,7 @@ void task_1_exit();
 static void task_exit_pid(pid_t task_id);
 static void task_exit_task(task_t* task, int singal);
 extern void switch_context(task_t *prev, task_t *next);
+extern void switch_context_to_user(task_t *prev, task_t *next);
 extern void copy_context(task_t *prev, task_t *next);
 void show_tasks();
 
@@ -197,7 +199,13 @@ void scheduler(void)
     
     // puts_color("Scheduler\n", current_task->pid); // easy way of seeing scheduler working.
     // puts_color("Scheduler\n", LIGHT_MAGENTA);
-    switch_context(prev, next);
+    if (next->is_user)
+    {
+        puts_color("Switching to user\n", LIGHT_MAGENTA);
+        switch_context_to_user(prev, next);
+    }
+    else
+        switch_context(prev, next);
     // puts_color("Scheduler\n", RED);
     /* think this should not be here maybe (?)*/
     enable_interrupts();
@@ -328,9 +336,63 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->uid = 0;
     task->euid = 0;
     task->gid = 0;
+    task->is_user = false;
     init_signals(task);
     add_new_task(task);
     // printf("Task %d created\n", task->pid);
+}
+
+void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
+{
+    task_t *task;
+    uint32_t *base;
+    uint32_t *user_stack;
+    uint32_t *kernel_stack;
+    uint32_t *user_stack_top;
+
+    if (task_index >= MAX_ACTIVE_TASKS)
+    {
+        puts_color("Max number of tasks reached\n", RED);
+        return;
+    }
+    
+    task = kmalloc(sizeof(task_t));
+
+    base = (uint32_t*)vmalloc(USER_STACK_SIZE, true);
+    memset(base, 0, USER_STACK_SIZE);
+
+    user_stack_top = base + (USER_STACK_SIZE / sizeof(uint32_t)) - 1;
+
+    kernel_stack = kmalloc(STACK_SIZE);
+    kernel_stack = (uint32_t*)((uint32_t)kernel_stack & 0xFFFFFFF0);
+    kernel_stack += STACK_SIZE / sizeof(uint32_t);
+
+    user_stack = user_stack_top;
+    *--user_stack = 0x2B;
+    *--user_stack = (uint32_t)user_stack_top;
+    *--user_stack = 0x202;
+    *--user_stack = 0x23;
+    *--user_stack = (uint32_t)entry;
+
+    printf("User stack top after building iret frame: %p\n", user_stack);
+
+    make_page_user((uintptr_t)entry);
+
+    task->pid = task_index++;
+    task->cpu.esp_ = (uint32_t)user_stack;
+    task->kernel_stack = (uint32_t)kernel_stack;
+    task->stack = (uint32_t)base;
+    task->state = TASK_READY;
+    memcpy(task->name, name, strlen(name) > 15 ? 15 : strlen(name));
+    task->name[strlen(name) > 15 ? 15 : strlen(name)] = '\0';
+    task->on_exit = on_exit;
+    task->entry = entry;
+    task->uid = 1000;
+    task->euid = 1000;
+    task->gid = 1000;
+    task->is_user = true;
+    init_signals(task);
+    add_new_task(task);
 }
 
 extern void fork_trampoline(void);
@@ -681,6 +743,15 @@ void task_wait()
     }
 }
 
+void user_task()
+{
+    while(1)
+    {
+        write(2, "User task\n", 10);
+        yeld();
+    }
+}
+
 void kshell();
 void start_foo_tasks(void)
 {
@@ -691,6 +762,9 @@ void start_foo_tasks(void)
     create_task(task_2, "task_2", task_2_exit);
     create_task(task_socket_send, "task_socket_send", NULL);
     create_task(task_socket_recv, "task_socket_recv", NULL);
+    
+    create_user_task(user_task, "user_task", NULL);
+    
     to_free = NULL;
     // printf("current_task: %p\n", current_task);
 }

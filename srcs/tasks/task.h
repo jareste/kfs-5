@@ -3,6 +3,7 @@
 
 #include "../utils/stdint.h"
 #include "../keyboard/signals.h"
+#include "../utils/utils.h"
 #include "cpu_state.h"
 
 typedef enum
@@ -42,6 +43,7 @@ typedef struct task_struct
     uid_t uid;
     uid_t euid;
     gid_t gid;
+    bool is_user;
     /* missing fields but untill it'll not work makes no sense to add them */    
 } task_t;
 
