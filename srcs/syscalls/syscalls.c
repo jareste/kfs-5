@@ -30,13 +30,14 @@ typedef union
 
 typedef union
 {
-    syscall_handler_6_t handler_6;
-    syscall_handler_5_t handler_5;
-    syscall_handler_4_t handler_4;
-    syscall_handler_3_t handler_3;
-    syscall_handler_2_t handler_2;
-    syscall_handler_1_t handler_1;
-    syscall_handler_0_t handler_0;
+    // syscall_handler_6_t handler_6;
+    // syscall_handler_5_t handler_5;
+    // syscall_handler_4_t handler_4;
+    // syscall_handler_3_t handler_3;
+    // syscall_handler_2_t handler_2;
+    // syscall_handler_1_t handler_1;
+    // syscall_handler_0_t handler_0;
+    void* handler;
 } syscall_handler_t;
 
 typedef struct
@@ -129,17 +130,12 @@ int sys_signal(uint32_t pid, signal_handler_t hand)
     return _signal(pid, hand);
 }
 
-syscall_entry_t syscall_table[MAX_SYSCALLS] = {
-  /*0*/  { .handler.handler_1 = (syscall_handler_1_t)sys_exit,       .num_args = 1, .ret_value_entry = RET_INT },
-  /*1*/  { .handler.handler_3 = (syscall_handler_3_t)sys_write,      .num_args = 3, .ret_value_entry = RET_INT },
-  /*2*/  { .handler.handler_3 = (syscall_handler_3_t)sys_read,       .num_args = 3, .ret_value_entry = RET_SIZE },
-  /*3*/  { .handler.handler_2 = (syscall_handler_2_t)sys_open,       .num_args = 2, .ret_value_entry = RET_INT },
-  /*4*/  { .handler.handler_1 = (syscall_handler_1_t)sys_close,      .num_args = 1, .ret_value_entry = RET_INT },
-  /*5*/  { .handler.handler_0 = (syscall_handler_0_t)sys_get_pid,    .num_args = 0, .ret_value_entry = RET_INT },
-  /*6*/  { .handler.handler_1 = (syscall_handler_1_t)sys_sleep,      .num_args = 1, .ret_value_entry = RET_INT },
-  /*7*/  { .handler.handler_2 = (syscall_handler_2_t)sys_kill,       .num_args = 2, .ret_value_entry = RET_INT },
-  /*8*/  { .handler.handler_2 = (syscall_handler_2_t)sys_signal,     .num_args = 2, .ret_value_entry = RET_INT },
-};
+pid_t fork()
+{
+    return _fork();
+}
+
+syscall_entry_t syscall_table[SYS_MAX_SYSCALL];
 
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {
@@ -152,7 +148,7 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
     uint32_t arg6 = reg.ebp;
 
     // printf("Syscall: %d\n", syscall_number);
-    if (syscall_number >= MAX_SYSCALLS)
+    if (syscall_number >= SYS_MAX_SYSCALL || syscall_table[syscall_number].handler.handler == NULL)
     {
         printf("Unknown syscall: %d\n", syscall_number);
         return -1;
@@ -172,25 +168,25 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
     switch (entry.num_args)
     {
         case 0:
-            ret_value.int_value = entry.handler.handler_0();
+            ret_value.int_value = ((syscall_handler_0_t)entry.handler.handler)();
             break;
         case 1:
-            ret_value.int_value = entry.handler.handler_1(arg1);
+            ret_value.int_value = ((syscall_handler_1_t)entry.handler.handler)(arg1);
             break;
         case 2:
-            ret_value.int_value = entry.handler.handler_2(reg.ebx, reg.ecx);
+            ret_value.int_value = ((syscall_handler_2_t)entry.handler.handler)(reg.ebx, reg.ecx);
             break;
         case 3:
-            ret_value.int_value = entry.handler.handler_3(arg1, arg2, arg3);
+            ret_value.int_value = ((syscall_handler_3_t)entry.handler.handler)(arg1, arg2, arg3);
             break;
         case 4:
-            ret_value.int_value = entry.handler.handler_4(arg1, arg2, arg3, arg4);
+            ret_value.int_value = ((syscall_handler_4_t)entry.handler.handler)(arg1, arg2, arg3, arg4);
             break;
         case 5:
-            ret_value.int_value = entry.handler.handler_5(arg1, arg2, arg3, arg4, arg5);
+            ret_value.int_value = ((syscall_handler_5_t)entry.handler.handler)(arg1, arg2, arg3, arg4, arg5);
             break;
         case 6:
-            ret_value.int_value = entry.handler.handler_6(arg1, arg2, arg3, arg4, arg5, arg6);
+            ret_value.int_value = ((syscall_handler_6_t)entry.handler.handler)(arg1, arg2, arg3, arg4, arg5, arg6);
             break;
         default:
             printf("Invalid number of arguments for syscall %d\n", syscall_number);
@@ -202,4 +198,63 @@ int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_st
 
     syscall_happening = false;
     return ret_value.int_value;
+}
+
+void init_syscalls()
+{
+    memset(syscall_table, 0, sizeof(syscall_table));
+
+    syscall_table[SYS_EXIT] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 1,
+        .handler.handler = (void*)sys_exit,
+    };
+
+    syscall_table[SYS_WRITE] = (syscall_entry_t){
+        .ret_value_entry = RET_SIZE,
+        .num_args = 3,
+        .handler.handler = (void*)sys_write,
+    };
+
+    syscall_table[SYS_READ] = (syscall_entry_t){
+        .ret_value_entry = RET_SIZE,
+        .num_args = 3,
+        .handler.handler = (void*)sys_read,
+    };
+
+    syscall_table[SYS_OPEN] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 2,
+        .handler.handler = (void*)sys_open,
+    };
+
+    syscall_table[SYS_CLOSE] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 1,
+        .handler.handler = (void*)sys_close,
+    };
+
+    syscall_table[SYS_GETPID] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 0,
+        .handler.handler = (void*)sys_get_pid,
+    };
+
+    // syscall_table[SYS_SLEEP] = (syscall_entry_t){
+    //     .ret_value_entry = RET_INT,
+    //     .num_args = 1,
+    //     .handler.handler_1 = sys_sleep,
+    // };
+
+    syscall_table[SYS_SIGNAL] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 2,
+        .handler.handler = (void*)sys_signal,
+    };
+
+    syscall_table[SYS_KILL] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 2,
+        .handler.handler = (void*)sys_kill,
+    };
 }

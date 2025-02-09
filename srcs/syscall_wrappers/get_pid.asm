@@ -5,7 +5,7 @@ get_pid:
     push ebp
     mov ebp, esp
 
-    mov eax, 5
+    mov eax, 20
 
     syscall
 

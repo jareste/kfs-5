@@ -8,6 +8,7 @@
 #include "tasks/task.h"
 #include "ide/ide.h"
 #include "ide/ext2.h"
+#include "syscalls/syscalls.h"
 
 #include "umgmnt/users.h"
 
@@ -34,6 +35,8 @@ void kernel_main()
     init_users_api();
 
     list_users();
+
+    init_syscalls();
 
     // kshell(); /* Uncomment this line to not run the scheduler */
     scheduler_init();

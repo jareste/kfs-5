@@ -7,7 +7,7 @@ kill:
 
     mov ebx, [ebp + 8]
     mov ecx, [ebp + 12]
-    mov eax, 7
+    mov eax, 1
 
     syscall
 

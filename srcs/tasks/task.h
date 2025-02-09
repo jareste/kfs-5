@@ -52,6 +52,8 @@ task_t* get_task_by_pid(pid_t pid);
 task_t* get_current_task();
 void kill_task();
 
-extern task_t* current_task;
+pid_t _fork(void);
+
+// extern task_t* current_task;
 
 #endif
