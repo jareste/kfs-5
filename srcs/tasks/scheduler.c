@@ -195,7 +195,7 @@ void scheduler(void)
     // if (next->pid == 5)
     //     while(1);
     
-    // printf("Current task: %d, %p\n", current_task->pid, next);
+    // puts_color("Scheduler\n", current_task->pid); // easy way of seeing scheduler working.
     // puts_color("Scheduler\n", LIGHT_MAGENTA);
     switch_context(prev, next);
     // puts_color("Scheduler\n", RED);
@@ -642,14 +642,16 @@ void task_read()
     signal(2, task_1_sighandler);
     while (1)
     {
-        char buffer[10];
-        int return_value;
-        return_value = read(0, buffer, sizeof(buffer));
-        // return_value = write(3, buffer, return_value); // error writing to fd 3
-        if (return_value <= 0)
-        {
-            puts_color("Error reading\n", RED);
-        }
+        // char buffer[10];
+        // int return_value;
+        // return_value = read(0, buffer, sizeof(buffer));
+        // // return_value = write(3, buffer, return_value); // error writing to fd 3
+        // if (return_value <= 0)
+        // {
+        //     puts_color("Error reading\n", RED);
+        // }
+        // puts_color("Task 4\n", LIGHT_MAGENTA);
+        yeld();
         // else
         // {
         //     buffer[return_value] = '\0';

@@ -257,4 +257,10 @@ void init_syscalls()
         .num_args = 2,
         .handler.handler = (void*)sys_kill,
     };
+
+    syscall_table[SYS_SCHED_YIELD] = (syscall_entry_t){
+        .ret_value_entry = RET_INT,
+        .num_args = 0,
+        .handler.handler = (void*)scheduler,
+    };
 }
