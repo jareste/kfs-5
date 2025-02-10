@@ -760,7 +760,7 @@ void user_task()
 void kshell();
 void start_foo_tasks(void)
 {
-    create_task(kshell, "kshell", NULL);
+    // create_task(kshell, "kshell", NULL);
     create_task(task_wait, "task_wait", NULL);
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_read, "task_read", NULL);

@@ -59,7 +59,7 @@ int sys_write(int fd, const char* buf, size_t count)
 {
     if (!buf || count == 0)
     {
-        printf("Write: Invalid buffer or count\n");
+        printf("Write: Invalid buffer or count, %d\n", count);
         return -1;
     }
     if (fd < 0 || fd > 2)
@@ -96,6 +96,7 @@ int sys_read(int fd, char* buf, size_t count)
         char* buffer = get_kb_buffer();
         size_t len = strlen(buffer);
         buffer[len - 1] = '\0'; /* remove '\n' */
+        strcpy(buf, buffer);
         return len;
     }
 
