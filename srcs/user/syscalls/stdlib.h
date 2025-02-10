@@ -2,6 +2,8 @@
 #define STDLIB_H
 #include "../../utils/stdint.h"
 
+typedef void (*signal_handler_t)(int);
+
 int write(int fd, const char* buf, size_t count);
 int kill(uint32_t pid, uint32_t signal);
 int signal(int signal, signal_handler_t handler);

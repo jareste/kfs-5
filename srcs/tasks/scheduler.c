@@ -755,6 +755,8 @@ void user_task()
     }
 }
 
+#include "../user/ushell/ushell.h"
+
 void kshell();
 void start_foo_tasks(void)
 {
@@ -766,7 +768,7 @@ void start_foo_tasks(void)
     create_task(task_socket_send, "task_socket_send", NULL);
     create_task(task_socket_recv, "task_socket_recv", NULL);
     
-    create_user_task(user_task, "user_task", NULL);
+    create_user_task(ushell, "user_task", NULL);
     
     to_free = NULL;
     // printf("current_task: %p\n", current_task);

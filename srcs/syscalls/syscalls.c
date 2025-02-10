@@ -3,6 +3,7 @@
 #include "../display/display.h"
 #include "../tasks/task.h"
 #include "../keyboard/signals.h"
+#include "../keyboard/keyboard.h"
 
 typedef int (*syscall_handler_6_t)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5, uint32_t arg6);
 typedef int (*syscall_handler_5_t)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
@@ -78,15 +79,25 @@ int sys_read(int fd, char* buf, size_t count)
         return -1;
     }
 
-    const char* data = "123456789";
-    size_t data_len = strlen(data);
+// char* get_line()
+// {
+//     clear_kb_buffer();
+//     while (getc() != '\n') scheduler();
+//     char* buffer = get_kb_buffer();
+//     buffer[strlen(buffer) - 1] = '\0'; /* remove '\n' */
+//     return buffer;
+// }
 
-    if (count > data_len)
+
+    if (fd == 0)
     {
-        count = data_len;
+        clear_kb_buffer();
+        while (getc() != '\n') scheduler();
+        char* buffer = get_kb_buffer();
+        size_t len = strlen(buffer);
+        buffer[len - 1] = '\0'; /* remove '\n' */
+        return len;
     }
-
-    memcpy(buf, data, count);
 
     // printf("Syscall: read(%d, %p, %d) - Filled buffer with: '", fd, buf, count);
     // for (size_t i = 0; i < count; i++)
