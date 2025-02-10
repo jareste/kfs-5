@@ -3,9 +3,9 @@
 #include "../keyboard/signals.h"
 #include "../utils/utils.h"
 #include "../timers/timers.h"
-#include "../syscall_wrappers/stdlib.h"
 #include "../umgmnt/users.h"
 #include "kshell.h"
+#include "../../srcs/user/syscalls/stdlib.h"
 
 #define MAX_COMMANDS 256
 #define MAX_SECTIONS_COMMANDS 25
@@ -490,11 +490,11 @@ void kshell()
 
         /* Comment this for working without wanting to burn the computer
          */
-        if (!current_user_is_valid() && strcmp(buffer, "login") != 0)
-        {
-            printf("Please login first\n");
-            continue;
-        }
+        // if (!current_user_is_valid() && strcmp(buffer, "login") != 0)
+        // {
+        //     printf("Please login first\n");
+        //     continue;
+        // }
 
         if (check_global_cmd(buffer))
             continue;

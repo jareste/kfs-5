@@ -6,7 +6,7 @@
 #include "../keyboard/signals.h"
 #include "../gdt/gdt.h"
 #include "../kshell/kshell.h"
-#include "../syscall_wrappers/stdlib.h"
+#include "../user/syscalls/stdlib.h"
 #include "../utils/queue.h"
 #include "../sockets/sockets.h"
 
@@ -201,7 +201,7 @@ void scheduler(void)
     // puts_color("Scheduler\n", LIGHT_MAGENTA);
     if (next->is_user)
     {
-        puts_color("Switching to user\n", LIGHT_MAGENTA);
+        // puts_color("Switching to user\n", LIGHT_MAGENTA);
         switch_context_to_user(prev, next);
     }
     else
@@ -320,8 +320,8 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     kernel_stack += STACK_SIZE / sizeof(uint32_t);
 
     // Simulate interrupt frame (EIP, EFLAGS, etc.)
-    // *--stack = 0x202;   // EFLAGS (IF enabled)
-    // *--stack = 0x08;    // CS (kernel code segment)
+    *--stack = 0x202;   // EFLAGS (IF enabled)
+    *--stack = 0x08;    // CS (kernel code segment)
     *--stack = (uint32_t)task_exit; // EIP
     *--stack = (uint32_t)entry; // EIP
 
@@ -536,8 +536,8 @@ void scheduler_init(void)
 
     init_queue(&finished_pid_queue);
 
-    // *--stack = 0x202;
-    // *--stack = 0x08;
+    *--stack = 0x202;
+    *--stack = 0x08;
     *--stack = (uint32_t)kernel_main;
     task_index = 0;
 
@@ -745,9 +745,12 @@ void task_wait()
 
 void user_task()
 {
+
+    // while(1);
+
     while(1)
     {
-        write(2, "User task\n", 10);
+        write(3, "User task\n", 10);
         yeld();
     }
 }
