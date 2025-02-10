@@ -18,7 +18,7 @@ typedef struct
     command_t commands[MAX_SECTIONS_COMMANDS];
 } command_section_t;
 
-section_t current_section = GENERAL;
+static section_t current_section = GENERAL;
 
 static void help();
 static void ks_kdump();
@@ -482,6 +482,7 @@ void kshell()
     set_keyboard_layout(QWERTY_ENG);
     while (1)
     {
+        scheduler();
         printf("jareste-OS> ");
         buffer = get_line();
 

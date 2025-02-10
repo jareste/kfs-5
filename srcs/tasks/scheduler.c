@@ -757,19 +757,22 @@ void user_task()
 
 #include "../user/ushell/ushell.h"
 
+void start_user()
+{
+    create_user_task(ushell, "ushell", NULL);
+}
+
 void kshell();
 void start_foo_tasks(void)
 {
-    // create_task(kshell, "kshell", NULL);
+    create_task(kshell, "kshell", NULL);
     create_task(task_wait, "task_wait", NULL);
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_read, "task_read", NULL);
     create_task(task_2, "task_2", task_2_exit);
     create_task(task_socket_send, "task_socket_send", NULL);
     create_task(task_socket_recv, "task_socket_recv", NULL);
-    
-    create_user_task(ushell, "user_task", NULL);
-    
+        
     to_free = NULL;
     // printf("current_task: %p\n", current_task);
 }

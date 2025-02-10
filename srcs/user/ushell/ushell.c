@@ -6,6 +6,21 @@
 
 #define MAX_TOKENS 15
 
+#define MAX_COMMANDS 256
+#define MAX_SECTIONS_COMMANDS 25
+#define MAX_SECTIONS SECTION_T_MAX
+
+typedef struct
+{
+    const char* name;
+    u_section_t section;
+    u_command_t commands[MAX_SECTIONS_COMMANDS];
+} u_command_section_t;
+
+static u_section_t current_section = FOO;
+
+static u_command_section_t command_sections[U_SECTION_T_MAX];
+
 char* readline(char* prompt)
 {
     static char buffer[1024];

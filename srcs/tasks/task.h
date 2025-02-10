@@ -56,6 +56,8 @@ void kill_task();
 
 pid_t _fork(void);
 
+void start_user();
+
 // extern task_t* current_task;
 
 #endif

@@ -3,6 +3,7 @@
 #include "../display/display.h"
 #include "../kshell/kshell.h"
 #include "../keyboard/keyboard.h"
+#include "../tasks/task.h"
 
 static void cmd_logout();
 static void cmd_login();
@@ -39,6 +40,9 @@ static int login(char *username, char *password)
 
     memcpy(&g_current_user, &u, sizeof(user_t));
     printf("Login successful as '%s'.\n", username);
+    get_current_task()->state = TASK_WAITING; //sleep this task
+    start_user();
+
     return 0;
 }
 
