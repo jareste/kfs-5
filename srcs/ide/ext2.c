@@ -46,8 +46,6 @@ static ext2_group_desc_t g_single_gd;
 static uint32_t next_free_inode = 5;   /* In ext2_format, inodes 2-4 are in use */
 static uint32_t next_free_block = 13;  /* Blocks 10,11,12 are already used */
 
-static char g_path[MAX_PATH_LENGTH];
-
 static void write_block(uint32_t block_num, const void* buf)
 {
     uint32_t start_lba = block_num * SECTORS_PER_BLOCK;
@@ -292,8 +290,6 @@ int ext2_mount()
     g_current_dir_inode_num = 2;
 
     install_all_cmds(ext2_commands, GLOBAL);
-    memset(g_path, 0, MAX_PATH_LENGTH);
-    g_path[0] = '/';
 
     printf("next_free_inode=%d, next_free_block=%d\n", next_free_inode, next_free_block);
 
@@ -475,79 +471,87 @@ int convert_path_to_inode(const char* path)
     return ino;
 }
 
+static void join_path(const char *current, const char *name, char *dest, int maxlen)
+{
+    int current_len = strlen(current);
+    if (current_len >= maxlen)
+    {
+        dest[0] = '\0';
+        return;
+    }
+    strcpy(dest, current);
+    
+    if (strcmp(current, "/") != 0)
+    {
+        if (dest[current_len - 1] != '/')
+        {
+            if (current_len < maxlen - 1)
+            {
+                dest[current_len] = '/';
+                dest[current_len + 1] = '\0';
+                current_len++;
+            }
+        }
+    }
+    strncat(dest, name, maxlen - current_len - 1);
+}
+
+static int search_from_dir(uint32_t dir_inode, uint32_t target_inode,
+                           const char *current_path, int maxlen, char *result_path)
+{
+    ext2_inode_t dir;
+    ext2_read_inode(dir_inode, &dir);
+    if (!(dir.i_mode & S_IFDIR))
+    {
+        return -1;
+    }
+    
+    uint8_t block_buf[EXT2_BLOCK_SIZE];
+    read_block(dir.i_block[0], block_buf);
+    
+    uint32_t offset = 0;
+    while (offset < dir.i_size)
+    {
+        ext2_dir_entry_t *entry = (ext2_dir_entry_t *)(block_buf + offset);
+        if (entry->inode != 0)
+        {
+            char name[256];
+            memcpy(name, entry->name, entry->name_len);
+            name[entry->name_len] = '\0';
+            
+            if (strcmp(name, ".") != 0 && strcmp(name, "..") != 0)
+            {
+                if (entry->inode == target_inode)
+                {
+                    join_path(current_path, name, result_path, maxlen);
+                    return 0;
+                }
+                ext2_inode_t child;
+                ext2_read_inode(entry->inode, &child);
+                if (child.i_mode & S_IFDIR)
+                {
+                    char new_path[256];
+                    join_path(current_path, name, new_path, sizeof(new_path));
+                    if (search_from_dir(entry->inode, target_inode, new_path, maxlen, result_path) == 0)
+                        return 0;
+                }
+            }
+        }
+        offset += entry->rec_len;
+    }
+    return -1;
+}
+
 int convert_inode_to_path(int inode, char* buffer)
 {
-    if(inode == 2)
+    if (inode == 2)
     {
         strcpy(buffer, "/");
         return 0;
     }
-
-    ext2_inode_t inode_data;
-    ext2_read_inode(inode, &inode_data);
-
-    if(inode_data.i_mode & S_IFDIR)
-    {
-        strcpy(buffer, "/");
-    }
-    else
-    {
-        strcpy(buffer, "");
-    }
-
-    uint32_t parent_inode = 2;
-    ext2_inode_t parent_inode_data;
-    ext2_read_inode(parent_inode, &parent_inode_data);
-
-    while(inode != 2)
-    {
-        uint32_t offset = 0;
-        static uint8_t block_buf[EXT2_BLOCK_SIZE];
-
-        while(offset < parent_inode_data.i_size)
-        {
-            uint32_t block_index = offset / EXT2_BLOCK_SIZE;
-            uint32_t offset_in_block = offset % EXT2_BLOCK_SIZE;
-            uint32_t disk_block = parent_inode_data.i_block[block_index];
-            if(!disk_block) break;
-
-            read_block(disk_block, block_buf);
-
-            while(offset_in_block < EXT2_BLOCK_SIZE)
-            {
-                ext2_dir_entry_t* dentry = (ext2_dir_entry_t*)(block_buf + offset_in_block);
-                if(dentry->inode == 0)
-                {
-                    offset += dentry->rec_len;
-                    offset_in_block += dentry->rec_len;
-                    continue;
-                }
-
-                if(dentry->inode == inode)
-                {
-                    char temp[MAX_PATH_LENGTH];
-                    strcpy(temp, buffer);
-                    strcpy(buffer, "/");
-                    strcat(buffer, dentry->name);
-                    strcat(buffer, temp);
-                    inode = parent_inode;
-                    break;
-                }
-
-                offset += dentry->rec_len;
-                offset_in_block += dentry->rec_len;
-                if(offset >= parent_inode_data.i_size) break;
-            }
-        }
-
-        if(inode != 2)
-        {
-            ext2_read_inode(inode, &parent_inode_data);
-        }
-    }
-
-    return 0;
+    return search_from_dir(2, (uint32_t)inode, "/", MAX_PATH_LENGTH, buffer);
 }
+
 
 int ext2_list_dir(const ext2_inode_t* dir_inode)
 {
@@ -584,52 +588,6 @@ int ext2_list_dir(const ext2_inode_t* dir_inode)
     return 0;
 }
 
-void update_path(const char* name)
-{
-    int i;
-
-    if(strcmp(name, ".") == 0)
-    {
-        return;
-    }
-
-    i = strlen(g_path);
-
-    if(strcmp(name, "..") == 0)
-    {
-        if (i == 1)
-        {
-            return;
-        }
-
-        while (g_path[i] != '/')
-        {
-            i--;
-        }
-        if (i > 0)
-            g_path[i] = '\0';
-        else
-            g_path[i + 1] = '\0';
-
-        return;
-    }
-
-    if (i > 1)
-    {
-        g_path[i] = '/';
-        i++;
-        g_path[i] = '\0';
-    }
-
-    while (*name)
-    {
-        g_path[i] = *name;
-        i++;
-        name++;
-    }
-
-}
-
 void cmd_cd()
 {
     char* dirname;
@@ -661,7 +619,6 @@ void cmd_cd()
     char buffer[MAX_PATH_LENGTH];
     convert_inode_to_path(target_ino, buffer);
     printf("Current path: %s\n", buffer);
-    update_path(dirname);
     g_current_dir_inode_num = target_ino;
     memcpy(&g_current_dir_inode, &tmp, sizeof(ext2_inode_t));
     
@@ -708,8 +665,9 @@ void cmd_cat(void)
 
 void cmd_pwd()
 {
-    puts(g_path);
-    putc('\n');
+    char buffer[MAX_PATH_LENGTH];
+    convert_inode_to_path(g_current_dir_inode_num, buffer);
+    printf("%s\n", buffer);
 }
 
 /* Allocate a new inode number (this is a very simple scheme) */
