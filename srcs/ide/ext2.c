@@ -427,7 +427,7 @@ uint32_t ext2_lookup(const ext2_inode_t* dir_inode, const char* name)
 
             if(dentry->name_len == strlen(name) &&
                memcmp(dentry->name, name, dentry->name_len) == 0)
-               {
+            {
                 return dentry->inode;
             }
 
@@ -443,8 +443,8 @@ int convert_path_to_inode(const char* path)
 {
     if(path[0] != '/')
     {
-        printf("Path must be absolute! Defaulting to root.\n");
-        return 2;
+        // printf("Path must be absolute! Defaulting to root.\n");
+        return ext2_lookup(&g_current_dir_inode, path);
     }
 
     if(strcmp(path, "/") == 0)
@@ -600,7 +600,7 @@ void cmd_cat(void)
     char* filename;
     puts("Enter file name: ");
     filename = get_line();
-    uint32_t ino = ext2_lookup(&g_current_dir_inode, filename);
+    uint32_t ino = convert_path_to_inode(filename);
     if(!ino)
     {
         printf("File not found!\n");
@@ -847,7 +847,14 @@ int ext2_write_data(ext2_inode_t *inode, uint32_t offset, const uint8_t* data, u
 
 ext2_file_t* ext2_open(const char* filename, const char* mode)
 {
-    uint32_t ino = ext2_lookup(&g_current_dir_inode, filename);
+    // uint32_t ino = ext2_lookup(&g_current_dir_inode, filename);
+    // if (ino == 0)
+    // {
+    //     printf("ext2_open: File '%s' not found!\n", filename);
+    //     return NULL;
+    // }
+
+    uint32_t ino = convert_path_to_inode(filename);
     if (ino == 0)
     {
         printf("ext2_open: File '%s' not found!\n", filename);

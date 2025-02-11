@@ -4,7 +4,7 @@
 #include "../utils/stdint.h"
 #include "../utils/utils.h"
 
-#define USERS_CONFIG     "users.config"
+#define USERS_CONFIG     "/users.config"
 #define NO_USER_LOGIN    "root"
 #define NO_USER_PASS     "root"
 

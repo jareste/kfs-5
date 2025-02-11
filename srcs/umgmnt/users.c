@@ -57,7 +57,7 @@ void add_user(user_t *new_user)
         printf("User '%s' already exists.\n", new_user->name);
         return;
     }
-    fp = ext2_open("users.config", "a");
+    fp = ext2_open(USERS_CONFIG, "a");
     if (!fp)
     {
         return;
@@ -71,7 +71,7 @@ void list_users()
     ext2_file_t *fp;
     user_t u;
 
-    fp = ext2_open("users.config", "rb");
+    fp = ext2_open(USERS_CONFIG, "rb");
     if (!fp)
     {
         return;
