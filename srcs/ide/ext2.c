@@ -443,7 +443,6 @@ int convert_path_to_inode(const char* path)
 {
     if(path[0] != '/')
     {
-        // printf("Path must be absolute! Defaulting to root.\n");
         return ext2_lookup(&g_current_dir_inode, path);
     }
 
@@ -474,6 +473,80 @@ int convert_path_to_inode(const char* path)
     }
 
     return ino;
+}
+
+int convert_inode_to_path(int inode, char* buffer)
+{
+    if(inode == 2)
+    {
+        strcpy(buffer, "/");
+        return 0;
+    }
+
+    ext2_inode_t inode_data;
+    ext2_read_inode(inode, &inode_data);
+
+    if(inode_data.i_mode & S_IFDIR)
+    {
+        strcpy(buffer, "/");
+    }
+    else
+    {
+        strcpy(buffer, "");
+    }
+
+    uint32_t parent_inode = 2;
+    ext2_inode_t parent_inode_data;
+    ext2_read_inode(parent_inode, &parent_inode_data);
+
+    while(inode != 2)
+    {
+        uint32_t offset = 0;
+        static uint8_t block_buf[EXT2_BLOCK_SIZE];
+
+        while(offset < parent_inode_data.i_size)
+        {
+            uint32_t block_index = offset / EXT2_BLOCK_SIZE;
+            uint32_t offset_in_block = offset % EXT2_BLOCK_SIZE;
+            uint32_t disk_block = parent_inode_data.i_block[block_index];
+            if(!disk_block) break;
+
+            read_block(disk_block, block_buf);
+
+            while(offset_in_block < EXT2_BLOCK_SIZE)
+            {
+                ext2_dir_entry_t* dentry = (ext2_dir_entry_t*)(block_buf + offset_in_block);
+                if(dentry->inode == 0)
+                {
+                    offset += dentry->rec_len;
+                    offset_in_block += dentry->rec_len;
+                    continue;
+                }
+
+                if(dentry->inode == inode)
+                {
+                    char temp[MAX_PATH_LENGTH];
+                    strcpy(temp, buffer);
+                    strcpy(buffer, "/");
+                    strcat(buffer, dentry->name);
+                    strcat(buffer, temp);
+                    inode = parent_inode;
+                    break;
+                }
+
+                offset += dentry->rec_len;
+                offset_in_block += dentry->rec_len;
+                if(offset >= parent_inode_data.i_size) break;
+            }
+        }
+
+        if(inode != 2)
+        {
+            ext2_read_inode(inode, &parent_inode_data);
+        }
+    }
+
+    return 0;
 }
 
 int ext2_list_dir(const ext2_inode_t* dir_inode)
@@ -570,7 +643,7 @@ void cmd_cd()
         return;
     }
 
-    target_ino = ext2_lookup(&g_current_dir_inode, dirname);
+    target_ino = convert_path_to_inode(dirname);
     if (target_ino == 0)
     {
         printf("Directory not found!\n");
@@ -585,9 +658,13 @@ void cmd_cd()
         return;
     }
 
+    char buffer[MAX_PATH_LENGTH];
+    convert_inode_to_path(target_ino, buffer);
+    printf("Current path: %s\n", buffer);
     update_path(dirname);
     g_current_dir_inode_num = target_ino;
     memcpy(&g_current_dir_inode, &tmp, sizeof(ext2_inode_t));
+    
 }
 
 void cmd_ls()

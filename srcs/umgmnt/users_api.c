@@ -91,7 +91,6 @@ static void cmd_create_user()
     printf("Enter GID: ");
     u.gid = strtol(get_line(), NULL, 10);
     printf("Enter home dir: ");
-    // u.home_inode = strtol(get_line(), NULL, 10);
     u.home_inode = convert_path_to_inode(get_line());
     u.home_inode = u.home_inode == 0 ? 2 : u.home_inode;
     printf("Home inode: %d\n", u.home_inode);
