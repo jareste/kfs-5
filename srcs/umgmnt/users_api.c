@@ -27,7 +27,6 @@ static int login(char *username, char *password)
     user_t u;
     if (find_user_by_name(username, &u) == false)
     {
-        printf("User '%s' not found.\n", username);
         return -1;
     }
 

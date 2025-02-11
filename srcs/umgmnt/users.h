@@ -4,6 +4,10 @@
 #include "../utils/stdint.h"
 #include "../utils/utils.h"
 
+#define USERS_CONFIG     "users.config"
+#define NO_USER_LOGIN    "root"
+#define NO_USER_PASS     "root"
+
 #define MAX_USER_NAME    32
 #define SHA256_HEX_LEN   64
 #define SALT_LEN         16
