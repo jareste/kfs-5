@@ -12,19 +12,19 @@ bool find_user_by_name(const char *name, user_t* u)
     fp = ext2_open(USERS_CONFIG, "rb");
     if (!fp)
     {
-        printf("Config file not found.\n");
-        if (strcmp(name, NO_USER_LOGIN) == 0)
-        {
-            strcpy(u->name, "root");
-            strcpy(u->pass_hash, "foo");
-            u->uid = 0;
-            u->gid = 0;
-            u->home_inode = 0;
-            u->shell_inode = 0;
-            u->is_valid = true;
-            printf("Login as root.\n");
-            return true;
-        }
+        // printf("Config file not found.\n");
+        // if (strcmp(name, NO_USER_LOGIN) == 0)
+        // {
+        //     strcpy(u->name, "root");
+        //     strcpy(u->pass_hash, "foo");
+        //     u->uid = 0;
+        //     u->gid = 0;
+        //     u->home_inode = 2;
+        //     u->shell_inode = 2;
+        //     u->is_valid = true;
+        //     printf("Login as root.\n");
+        //     return true;
+        // }
         return false;
     }
 
@@ -38,7 +38,7 @@ bool find_user_by_name(const char *name, user_t* u)
     }
 
     ext2_close(fp);
-    printf("User '%s' not found.\n", name);
+    // printf("User '%s' not found.\n", name);
     return false;
 }
 

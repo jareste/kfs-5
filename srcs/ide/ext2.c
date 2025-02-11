@@ -439,6 +439,43 @@ uint32_t ext2_lookup(const ext2_inode_t* dir_inode, const char* name)
     return 0;
 }
 
+int convert_path_to_inode(const char* path)
+{
+    if(path[0] != '/')
+    {
+        printf("Path must be absolute! Defaulting to root.\n");
+        return 2;
+    }
+
+    if(strcmp(path, "/") == 0)
+    {
+        return 2;
+    }
+
+    ext2_inode_t inode;
+    ext2_read_inode(2, &inode);
+
+    char path_copy[MAX_PATH_LENGTH];
+    strcpy(path_copy, path);
+
+    char* token = strtok(path_copy, "/");
+    uint32_t ino = 2;
+    while(token)
+    {
+        ino = ext2_lookup(&inode, token);
+        if(ino == 0)
+        {
+            printf("Path not found: %s. Defaulting to root\n", token);
+            return 2;
+        }
+
+        ext2_read_inode(ino, &inode);
+        token = strtok(NULL, "/");
+    }
+
+    return ino;
+}
+
 int ext2_list_dir(const ext2_inode_t* dir_inode)
 {
     uint32_t offset = 0;
@@ -540,6 +577,7 @@ void cmd_cd()
         return;
     }
 
+    printf("Found directory %s with inode %d\n", dirname, target_ino);
     ext2_read_inode(target_ino, &tmp);
     if (!S_ISDIR(tmp.i_mode))
     {
@@ -909,6 +947,12 @@ void cmd_write()
         ext2_write(f, "\n", 1);
     }
     ext2_close(f);
+}
+
+int set_actual_dir(uint32_t inode_num)
+{
+    ext2_read_inode(inode_num, &g_current_dir_inode);
+    g_current_dir_inode_num = inode_num;
 }
 
 /* ############################################################################# */

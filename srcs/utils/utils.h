@@ -49,6 +49,9 @@ char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, size_t n);
 char *strncat(char *dest, const char *src, size_t n);
 char *strrchr(const char *s, int c);
+char *strtok(char *str, const char *delim);
+size_t strcspn(const char *s, const char *reject);
+size_t strspn(const char *s, const char *accept);
 
 #define ASSERT(x)   if (!(x)) { kernel_panic("Assertion failed: " #x); }
 #define NEVER_HERE  kernel_panic("NEVER_HERE")
