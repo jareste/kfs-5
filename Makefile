@@ -32,7 +32,7 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
 			scheduler.c sockets.c queue.c ide.c ext2.c users.c sha256.c \
 			strcpy.c users_api.c strncpy.c strncat.c strrchr.c \
-			strtok.c strcspn.c strspn.c strcat.c
+			strtok.c strcspn.c strspn.c strcat.c fs.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
 			  clear_registers.asm tasks.asm write.asm kill.asm \

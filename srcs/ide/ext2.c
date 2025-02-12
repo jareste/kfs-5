@@ -26,7 +26,7 @@ void cmd_mkdir();
 void cmd_pwd();
 void cmd_write();
 
-static int ext2_read_inode(uint32_t inode_num, ext2_inode_t* inode);
+int ext2_read_inode(uint32_t inode_num, ext2_inode_t* inode);
 static int ext2_write_inode(uint32_t inode_num, const ext2_inode_t* inode);
 
 command_t ext2_commands[] = {
@@ -55,7 +55,7 @@ static void write_block(uint32_t block_num, const void* buf)
     }
 }
 
-static void read_block(uint32_t block_num, void* buf)
+void read_block(uint32_t block_num, void* buf)
 {
     uint32_t start_lba = block_num * SECTORS_PER_BLOCK;
     for (int i = 0; i < SECTORS_PER_BLOCK; i++)
@@ -314,7 +314,7 @@ int ext2_read_superblock(ext2_superblock_t* sb)
     return 0;
 }
 
-static int ext2_read_inode(uint32_t inode_num, ext2_inode_t* inode)
+int ext2_read_inode(uint32_t inode_num, ext2_inode_t* inode)
 {
     uint32_t index = inode_num - 1;
     uint32_t inode_table_block = g_single_gd.bg_inode_table;

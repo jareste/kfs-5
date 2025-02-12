@@ -5,6 +5,7 @@
 #include "../timers/timers.h"
 #include "../syscall_wrappers/stdlib.h"
 #include "../umgmnt/users.h"
+#include "../ide/fs.h"
 #include "kshell.h"
 
 #define MAX_COMMANDS 256
@@ -144,6 +145,13 @@ static void kuptime()
 
 static void ksleep()
 {
+    // fs_node_t* node;
+    // node = fs_build_tree_from_inode(2, "/", NULL, NULL);
+    // if (node)
+    // {
+    //     fs_print_tree(node, 0);
+    //     fs_destroy_tree(node);
+    // }
     char* buffer;
     uint32_t seconds;
 
