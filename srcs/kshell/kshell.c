@@ -4,6 +4,7 @@
 #include "../utils/utils.h"
 #include "../timers/timers.h"
 #include "../umgmnt/users.h"
+#include "../ide/fs.h"
 #include "kshell.h"
 #include "../../srcs/user/syscalls/stdlib.h"
 
@@ -144,6 +145,13 @@ static void kuptime()
 
 static void ksleep()
 {
+    // fs_node_t* node;
+    // node = fs_build_tree_from_inode(2, "/", NULL, NULL);
+    // if (node)
+    // {
+    //     fs_print_tree(node, 0);
+    //     fs_destroy_tree(node);
+    // }
     char* buffer;
     uint32_t seconds;
 

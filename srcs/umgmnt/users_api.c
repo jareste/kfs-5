@@ -28,7 +28,6 @@ static int login(char *username, char *password)
     user_t u;
     if (find_user_by_name(username, &u) == false)
     {
-        printf("User '%s' not found.\n", username);
         return -1;
     }
 
@@ -40,8 +39,10 @@ static int login(char *username, char *password)
 
     memcpy(&g_current_user, &u, sizeof(user_t));
     printf("Login successful as '%s'.\n", username);
-    get_current_task()->state = TASK_WAITING; //sleep this task
+    get_current_task()->state = TASK_WAITING;
     start_user();
+
+    set_actual_dir(g_current_user.home_inode);
 
     return 0;
 }
@@ -94,8 +95,10 @@ static void cmd_create_user()
     u.uid = strtol(get_line(), NULL, 10);
     printf("Enter GID: ");
     u.gid = strtol(get_line(), NULL, 10);
-    printf("Enter home inode: ");
-    u.home_inode = strtol(get_line(), NULL, 10);
+    printf("Enter home dir: ");
+    u.home_inode = convert_path_to_inode(get_line());
+    u.home_inode = u.home_inode == 0 ? 2 : u.home_inode;
+    printf("Home inode: %d\n", u.home_inode);
     printf("Enter shell inode: ");
     u.shell_inode = strtol(get_line(), NULL, 10);
     u.is_valid = true;

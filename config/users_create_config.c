@@ -20,7 +20,7 @@ typedef struct
 
 user_t find_user_by_name(const char *name)
 {
-    FILE *fp = fopen("users.config", "rb");
+    FILE *fp = fopen(USERS_CONFIG, "rb");
     if (!fp)
     {
         return (user_t){ .is_valid = false };
@@ -42,7 +42,7 @@ user_t find_user_by_name(const char *name)
 
 void add_user(user_t *new_user)
 {
-    FILE *fp = fopen("users.config", "ab");
+    FILE *fp = fopen(USERS_CONFIG, "ab");
     fwrite(new_user, sizeof(user_t), 1, fp);
     fclose(fp);
 }
