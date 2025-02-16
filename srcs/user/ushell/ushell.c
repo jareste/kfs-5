@@ -10,16 +10,24 @@
 #define MAX_SECTIONS_COMMANDS 25
 #define MAX_SECTIONS SECTION_T_MAX
 
+void echo(char** args, int argc);
+
+typedef enum
+{
+    ECHO = 0,
+    BUILTIN_MAX
+} builtin_def;
+
 typedef struct
 {
-    const char* name;
-    u_section_t section;
-    u_command_t commands[MAX_SECTIONS_COMMANDS];
-} u_command_section_t;
+    const char* cmd;
+    builtin_def def;
+} builtin_t;
 
-static u_section_t current_section = FOO;
-
-static u_command_section_t command_sections[U_SECTION_T_MAX];
+static builtin_t builtins[] = {
+    {"echo", ECHO},
+    {NULL, 0}
+};
 
 char* readline(char* prompt)
 {
@@ -43,9 +51,33 @@ char* readline(char* prompt)
     {
         write(1, "read() failed\n", 14);
         memset(buffer, 0, 1024);
-        // buffer[0] = '\0'; // Ensure empty string on read error
     }
     return buffer;
+}
+
+void exec_builtin(char** args, int argc)
+{
+    int i;
+
+    i = 0;
+    while (builtins[i].cmd != NULL)
+    {
+        if (strcmp(args[0], builtins[i].cmd) == 0)
+        {
+            switch (builtins[i].def)
+            {
+                case ECHO:
+                    echo(args, argc);
+                    break;
+                default:
+                    break;
+            }
+            return;
+        }
+        i++;
+    }
+
+    printf("Command '%s' not found\n", args[0]);
 }
 
 void ushell(void)
@@ -70,32 +102,26 @@ void ushell(void)
         i = 0;
         while (i < len && token_count < MAX_TOKENS)
         {
-            // write(1, "Token: ", 7);
-            // write(1, buffer, strlen(buffer));
             tokens[token_count++] = &buffer[i];
             while (buffer[i] != ' ' && buffer[i] != '\0') i++;
             if (buffer[i] == ' ')
             {
-                buffer[i] = '\0'; // Terminate token
+                buffer[i] = '\0';
                 i++;
                 while (buffer[i] == ' ') i++;
             }
         }
 
-        if (token_count > 0)
-        {
-            // printf("Command: %s\n", tokens[0]);
-            for (i = 0; i < token_count; i++)
-            {
-                write(1, tokens[i], strlen(tokens[i]));
-                write(1, " ", 1);
-            }
-            write(1, "\n", 1);
-                
-        }
-        else
-        {
-            write(1, "No command entered\n", 19);
-        }
+        exec_builtin(tokens, token_count);
     }
+}
+
+void echo(char** args, int argc)
+{
+    for (int i = 1; i < argc; i++)
+    {
+        write(1, args[i], strlen(args[i]));
+        write(1, " ", 1);
+    }
+    write(1, "\n", 1);
 }
