@@ -11,10 +11,12 @@
 #define MAX_SECTIONS SECTION_T_MAX
 
 void echo(char** args, int argc);
+void u_exit(void);
 
 typedef enum
 {
     ECHO = 0,
+    EXIT,
     BUILTIN_MAX
 } builtin_def;
 
@@ -26,6 +28,7 @@ typedef struct
 
 static builtin_t builtins[] = {
     {"echo", ECHO},
+    {"exit", EXIT},
     {NULL, 0}
 };
 
@@ -69,6 +72,9 @@ void exec_builtin(char** args, int argc)
                 case ECHO:
                     echo(args, argc);
                     break;
+                case EXIT:
+                    u_exit();
+                    break;
                 default:
                     break;
             }
@@ -88,6 +94,8 @@ void ushell(void)
     int token_count;
     int len;
     int i;
+
+    printf("Welcome to ushell\n");
 
     while (1)
     {
@@ -124,4 +132,12 @@ void echo(char** args, int argc)
         write(1, " ", 1);
     }
     write(1, "\n", 1);
+}
+
+void u_exit(void)
+{
+    // write(1, "Exiting ushell\n", 15);
+    // printf("PID: %d\n", get_pid());
+    // kill(get_pid(), 2);
+    exit(0);
 }

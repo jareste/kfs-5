@@ -267,6 +267,11 @@ static void task_exit()
     task_exit_task(current_task, 0);
 }
 
+void _exit(int status)
+{
+    task_exit_task(current_task, status);
+}
+
 void kill_task(int signal)
 {
     // printf("Killing task %d With signal:%d--------------\n", current_task->pid, signal);
@@ -757,9 +762,18 @@ void user_task()
 
 #include "../user/ushell/ushell.h"
 
+void unsleep_kshell()
+{
+    // puts("Unsleeping kshell\n");
+    /* Assuming kshell it's allways 1. */
+    task_t *kshell = get_task_by_pid(1);
+    kshell->state = TASK_READY;
+    force_no_syscall();
+}
+
 void start_user()
 {
-    create_user_task(ushell, "ushell", NULL);
+    create_user_task(ushell, "ushell", unsleep_kshell);
 }
 
 void kshell();

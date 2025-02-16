@@ -46,6 +46,11 @@ void handle_signals()
     // printf("Handling signals for PID %d, pending: %d\n", task->pid,task->signals.pending_signals);
     // printf("pid: %d\n", task->pid);
     // printf("Handling signals for PID %p\n", task->signals);
+    if (task->pid == 9 && task->signals.pending_signals != 0)
+    {
+        printf("Handling signals for PID %d, pending: %d\n", task->pid,task->signals.pending_signals);
+    }
+
     if (task->signals.pending_signals == 0)
     {
     // printf("end of handling signals\n");
@@ -81,6 +86,7 @@ int _kill(pid_t pid, int signal)
     }
     if (signal >= 0 && signal < MAX_SIGNALS)
     {
+        printf("Sending signal %d to PID %d\n", signal, pid);
         task->signals.pending_signals |= (1 << signal);
     }
     return 1;

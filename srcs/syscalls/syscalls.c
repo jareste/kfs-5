@@ -51,8 +51,8 @@ typedef struct
 
 int sys_exit(int status)
 {
-    printf("Syscall: exit(%d)\n", status);
-    return 1;
+    _exit(status);
+    return status;
 }
 
 int sys_write(int fd, const char* buf, size_t count)
@@ -148,6 +148,11 @@ pid_t fork()
 }
 
 syscall_entry_t syscall_table[SYS_MAX_SYSCALL];
+
+void force_no_syscall()
+{
+    syscall_happening = false;
+}
 
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack)
 {

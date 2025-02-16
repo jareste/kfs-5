@@ -108,5 +108,6 @@ typedef enum {
 int syscall_handler(registers reg, uint32_t intr_no, uint32_t err_code, error_state stack);
 
 void init_syscalls();
+void force_no_syscall();
 
 #endif // SYSCALLS_H

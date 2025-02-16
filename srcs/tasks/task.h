@@ -54,6 +54,8 @@ task_t* get_task_by_pid(pid_t pid);
 task_t* get_current_task();
 void kill_task();
 
+void _exit(int status);
+
 pid_t _fork(void);
 
 void start_user();

@@ -1,13 +1,12 @@
 %define syscall int 0x30
 
-global kill
-kill:
+global exit
+exit:
     push ebp
     mov ebp, esp
 
     mov ebx, [ebp + 8]
-    mov ecx, [ebp + 12]
-    mov eax, 37
+    mov eax, 1
 
     syscall
 
