@@ -28,7 +28,7 @@ void kernel_main()
 
     enable_interrupts();
 
-    ide_demo();
+    // ide_demo();
 
     ext2_mount();
 

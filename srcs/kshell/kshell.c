@@ -145,24 +145,24 @@ static void kuptime()
 
 static void ksleep()
 {
-    // fs_node_t* node;
-    // node = fs_build_tree_from_inode(2, "/", NULL, NULL);
-    // if (node)
-    // {
-    //     fs_print_tree(node, 0);
-    //     fs_destroy_tree(node);
-    // }
-    char* buffer;
-    uint32_t seconds;
+    fs_node_t* node;
+    node = fs_build_tree_from_inode(2, "/", NULL, NULL);
+    if (node)
+    {
+        fs_print_tree(node, 0);
+        fs_destroy_tree(node);
+    }
+    // char* buffer;
+    // uint32_t seconds;
 
-    printf("Enter the number of seconds to sleep: ");
+    // printf("Enter the number of seconds to sleep: ");
     
-    buffer = get_line();
+    // buffer = get_line();
 
-    seconds = (uint32_t)hex_string_to_int(buffer);
-    printf("Sleeping for %d seconds...\n", seconds);
-    sleep(seconds);
-    printf("Woke up!\n");
+    // seconds = (uint32_t)hex_string_to_int(buffer);
+    // printf("Sleeping for %d seconds...\n", seconds);
+    // sleep(seconds);
+    // printf("Woke up!\n");
 }
 
 static void ks_kill()

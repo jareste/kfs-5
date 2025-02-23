@@ -114,9 +114,10 @@ crhello:
 	-o hello test/hello.c
 
 format: crdisk
-	cc ext2_format.c -o ext2_format
+	cc ext2_format_unix.c -o ext2_format
 	cp config/users.config .
-	./ext2_format disk.img users.config
+	echo "holaaaa" >> hellooooo.txt
+	./ext2_format disk.img users.config hellooooo.txt
 	rm ext2_format users.config
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso

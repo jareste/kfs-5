@@ -577,6 +577,7 @@ int ext2_list_dir(const ext2_inode_t* dir_inode)
                 continue;
             }
 
+            dentry->name[dentry->name_len] = '\0';
             printf("%s ", dentry->name);
 
             offset += dentry->rec_len;

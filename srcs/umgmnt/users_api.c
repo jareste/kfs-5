@@ -39,8 +39,8 @@ static int login(char *username, char *password)
 
     memcpy(&g_current_user, &u, sizeof(user_t));
     printf("Login successful as '%s'.\n", username);
-    get_current_task()->state = TASK_WAITING;
-    start_user();
+    // get_current_task()->state = TASK_WAITING;
+    // start_user();
 
     set_actual_dir(g_current_user.home_inode);
 
