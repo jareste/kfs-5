@@ -10,3 +10,4 @@ kfs*
 .gitignore
 .vscode/
 disk.img
+mnt_ext2/

@@ -32,7 +32,7 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
 			scheduler.c sockets.c queue.c ide.c ext2.c users.c sha256.c \
 			strcpy.c users_api.c strncpy.c strncat.c strrchr.c \
-			strtok.c strcspn.c strspn.c strcat.c fs.c ushell.c env.c \
+			strtok.c strcspn.c strspn.c strcat.c ushell.c env.c \
 			strchr.c memmove.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
@@ -104,20 +104,30 @@ debug:
 xorriso:
 	xorriso -indev $(NAME) -ls /boot/grub/
 
-crdisk:
-	qemu-img create -f raw disk.img 10M
-	dd if=/dev/zero of=disk.img bs=512 count=20480
-
 crhello:
 	gcc -nostdlib -nostartfiles -Os -s -ffunction-sections -fdata-sections \
 	-Wl,--gc-sections -fno-asynchronous-unwind-tables -fno-pie -no-pie \
 	-o hello test/hello.c
 
+crdisk:
+	qemu-img create -f raw disk.img 10M
+# /usr/sbin/mkfs.ext2 -F -b 1024 -I 128 disk.img
+	/usr/sbin/mkfs.ext2 -F -b 1024 -I 128 -g 8192 disk.img
+
+# dd if=/dev/zero of=disk.img bs=512 count=20480
+
 format: crdisk
-	cc ext2_format_unix.c -o ext2_format
+	cc ext2_format.c -o ext2_format
 	cp config/users.config .
 	echo "holaaaa" >> hello124.txt
-	./ext2_format disk.img users.config hello124.txt
+	sudo mount -o loop disk.img mnt_ext2
+	sudo cp hello124.txt mnt_ext2/
+	sudo mkdir mnt_ext2/etc
+	# sudo cp users.config mnt_ext2/etc/.
+	sudo cp users.config mnt_ext2/.
+	sudo rm -rf lost+found
+	sudo umount mnt_ext2
+# sudo ./ext2_format disk.img users.config hello124.txt
 	rm ext2_format users.config hello124.txt
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso

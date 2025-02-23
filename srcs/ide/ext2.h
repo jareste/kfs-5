@@ -1,17 +1,15 @@
-#ifndef EXT_2
-#define EXT_2
+#ifndef EXT2_H
+#define EXT2_H
 
 #include "../utils/stdint.h"
 
-#define S_IFMT  0xF000
-#define S_IFDIR 0x4000
-#define S_IFREG 0x8000
+/* Constants and sizes */
+#define EXT2_BLOCK_SIZE    1024
+#define EXT2_INODE_SIZE    128
+#define EXT2_ROOT_INODE    2
+#define EXT2_PARTITION_START 0  /* starting LBA of the ext2 partition */
 
-static inline int S_ISDIR(uint16_t m) { return ((m & S_IFMT) == S_IFDIR); }
-static inline int S_ISREG(uint16_t m) { return ((m & S_IFMT) == S_IFREG); }
-
-#pragma pack(push, 1)
-typedef struct
+struct ext2_super_block
 {
     uint32_t s_inodes_count;
     uint32_t s_blocks_count;
@@ -38,11 +36,10 @@ typedef struct
     uint32_t s_rev_level;
     uint16_t s_def_resuid;
     uint16_t s_def_resgid;
-} ext2_superblock_t;
-#pragma pack(pop)
+    /* … additional fields omitted … */
+};
 
-#pragma pack(push, 1)
-typedef struct
+struct ext2_group_desc
 {
     uint32_t bg_block_bitmap;
     uint32_t bg_inode_bitmap;
@@ -52,65 +49,51 @@ typedef struct
     uint16_t bg_used_dirs_count;
     uint16_t bg_pad;
     uint32_t bg_reserved[3];
-} ext2_group_desc_t;
-#pragma pack(pop)
+};
 
-#pragma pack(push, 1)
-typedef struct
+struct ext2_inode
 {
-    uint16_t i_mode;
-    uint16_t i_uid;
-    uint32_t i_size;
-    uint32_t i_atime;
-    uint32_t i_ctime;
-    uint32_t i_mtime;
-    uint32_t i_dtime;
-    uint16_t i_gid;
-    uint16_t i_links_count;
-    uint32_t i_blocks;
-    uint32_t i_flags;
-    uint32_t i_osd1;
+    uint16_t i_mode;         /* file mode */
+    uint16_t i_uid;          /* low 16 bits of owner uid */
+    uint32_t i_size;         /* size in bytes */
+    uint32_t i_atime;        /* access time */
+    uint32_t i_ctime;        /* creation time */
+    uint32_t i_mtime;        /* modification time */
+    uint32_t i_dtime;        /* deletion time */
+    uint16_t i_gid;          /* low 16 bits of group id */
+    uint16_t i_links_count;  /* links count */
+    uint32_t i_blocks;       /* blocks count in 512-byte units */
+    uint32_t i_flags;        /* file flags */
+    uint32_t i_osd1;         /* OS dependent 1 */
+    uint32_t i_block[15];    /* pointers to blocks */
+    uint32_t i_generation;   /* file version (for NFS) */
+    uint32_t i_file_acl;     /* file ACL */
+    uint32_t i_dir_acl;      /* directory ACL */
+    uint32_t i_faddr;        /* fragment address */
+    uint8_t  i_osd2[12];     /* OS dependent 2 */
+};
 
-    uint32_t i_block[12];
-    uint32_t i_block_indirect;
-    uint32_t i_block_double;
-    uint32_t i_block_triple;
-} ext2_inode_t;
-#pragma pack(pop)
-
-
-#pragma pack(push, 1)
-typedef struct
+struct ext2_dir_entry
 {
-    uint32_t inode;
-    uint16_t rec_len;
-    uint8_t  name_len;
-    uint8_t  file_type;
-    char     name[255];
-} ext2_dir_entry_t;
-#pragma pack(pop)
+    uint32_t inode;          /* inode number */
+    uint16_t rec_len;        /* record length */
+    uint8_t  name_len;       /* name length */
+    uint8_t  file_type;      /* file type */
+    char     name[255];      /* file name (not null terminated!) */
+};
 
-/* Structure to represent an open file.
-   (For now we support only one block per file.) */
-typedef struct
-{
-    uint32_t inode_num;   /* inode number of the file */
-    ext2_inode_t inode;   /* a copy of the file inode */
-    uint32_t pos;         /* current file position */
-} ext2_file_t;
+#define EXT2_FT_UNKNOWN  0
+#define EXT2_FT_REG_FILE 1
+#define EXT2_FT_DIR      2
 
-int ext2_format(void);
+/* Command interfaces */
+void ext2_init(void);
+void ext2_cmd_ls(const char* path);
+void ext2_cmd_cat(const char* path);
+void ext2_cmd_touch(const char* path);
+void ext2_cmd_mkdir(const char* path);
+void ext2_cmd_rm(const char* path);
+void ext2_cmd_rmdir(const char* path);
+void ext2_cmd_cd(const char* path);
 
-int ext2_mount();
-
-int ext2_read_superblock(ext2_superblock_t* sb);
-
-void ext2_demo();
-
-int ext2_write(ext2_file_t* file, const void* buf, uint32_t len);
-int ext2_close(ext2_file_t* file);
-int ext2_write(ext2_file_t* file, const void* buf, uint32_t len);
-ext2_file_t* ext2_open(const char* filename, const char* mode);
-int ext2_read(ext2_file_t* file, void* buf, uint32_t len);
-
-#endif // EXT_2
+#endif

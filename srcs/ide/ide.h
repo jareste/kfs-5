@@ -21,6 +21,8 @@
 #define IDE_CMD_READ    0x20
 #define IDE_CMD_WRITE   0x30
 
+#define IDE_SECTOR_SIZE 512
+
 void ide_init();
 void ide_read_sector(uint32_t lba, uint16_t* buffer);
 void ide_write_sector(uint32_t lba, uint16_t* buffer);

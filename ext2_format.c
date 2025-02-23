@@ -265,13 +265,13 @@ int main(int argc, char *argv[])
     root.i_block[0] = 10;
     write_inode(fp, 2, &root);
 
-    ext2_inode_t foo;
-    memset(&foo, 0, sizeof(foo));
-    foo.i_mode = S_IFDIR | 0755;
-    foo.i_size = EXT2_BLOCK_SIZE;
-    foo.i_links_count = 2;
-    foo.i_block[0] = 11;
-    write_inode(fp, 3, &foo);
+    ext2_inode_t etc;
+    memset(&etc, 0, sizeof(etc));
+    etc.i_mode = S_IFDIR | 0755;
+    etc.i_size = EXT2_BLOCK_SIZE;
+    etc.i_links_count = 2;
+    etc.i_block[0] = 11;
+    write_inode(fp, 3, &etc);
 
     const char *file_content = "Hello from ext2!\n";
     size_t file_len = strlen(file_content);
@@ -308,9 +308,9 @@ int main(int argc, char *argv[])
     d3->name_len = 3;
     d3->file_type = 2;
     d3->rec_len = 12;
-    d3->name[0] = 'f';
-    d3->name[1] = 'o';
-    d3->name[2] = 'o';
+    d3->name[0] = 'e';
+    d3->name[1] = 't';
+    d3->name[2] = 'c';
 
     ext2_dir_entry_t *d4 = (ext2_dir_entry_t *)((uint8_t *)d3 + d3->rec_len);
     d4->inode = 4;

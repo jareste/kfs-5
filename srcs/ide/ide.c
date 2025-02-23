@@ -4,8 +4,6 @@
 #include "../memory/memory.h"
 #include "../display/display.h"
 
-#define IDE_SECTOR_SIZE 512
-
 #define MAX_LBA 0x0FFFFFFF
 
 #define le16_to_cpu(x) ((x) >> 8) | ((x) << 8)
@@ -135,6 +133,18 @@ void ide_write_sector(uint32_t lba, uint16_t* buffer)
     }
     
     enable_interrupts();
+}
+
+int ide_write_sectors(uint32_t lba, uint8_t count, void* buffer)
+{
+    if (lba > MAX_LBA || count == 0 || count > 256) return -1;
+    
+    uint16_t* buf = (uint16_t*)buffer;
+    for (uint8_t i = 0; i < count; i++)
+    {
+        ide_write_sector(lba + i, buf + (i * IDE_SECTOR_SIZE/2));
+    }
+    return 0;
 }
 
 void ide_flush()
