@@ -122,7 +122,7 @@ format: crdisk
 	echo "holaaaa" >> hello124.txt
 	sudo mount -o loop disk.img mnt_ext2
 	sudo cp hello124.txt mnt_ext2/
-	sudo mkdir mnt_ext2/etc
+	# sudo mkdir mnt_ext2/etc
 	# sudo cp users.config mnt_ext2/etc/.
 	sudo cp users.config mnt_ext2/.
 	sudo rm -rf lost+found

@@ -6,14 +6,6 @@
 #include "../kshell/kshell.h"
 #include "../display/display.h"
 
-
-/* We define IDE_SECTOR_SIZE here (if not defined in ide.h) */
-#ifndef IDE_SECTOR_SIZE
-#define IDE_SECTOR_SIZE 512
-#endif
-
-/* Declare external IDE functions.
-   Ensure these are implemented in your IDE module. */
 extern int ide_read_sectors(uint32_t lba, uint8_t count, void *buffer);
 extern int ide_write_sectors(uint32_t lba, uint8_t count, void *buffer);
 
@@ -30,6 +22,36 @@ struct ext2_fs
 } ext2;
 
 static uint32_t current_dir = EXT2_ROOT_INODE;  /* current working directory inode */
+
+static void split_path(const char *full_path, char *out_parent, char *out_name)
+{
+    char temp[256];
+    strcpy(temp, full_path);
+
+    char *last_slash = strrchr(temp, '/');
+    if (!last_slash)
+    {
+        strcpy(out_parent, ".");
+        strcpy(out_name, temp);
+        return;
+    }
+
+    *last_slash = '\0';
+    if (last_slash == temp)
+    {
+        strcpy(out_parent, "/");
+    }
+    else
+    {
+        strcpy(out_parent, temp);
+    }
+    strcpy(out_name, last_slash + 1);
+    if (out_name[0] == '\0')
+    {
+        strcpy(out_name, ".");
+    }
+}
+
 
 static void ext2_read_block(uint32_t block, void *buf)
 {
@@ -580,6 +602,130 @@ void ext2_cmd_cd(const char *path)
     current_dir = inode_num;
 }
 
+void ext2_cmd_cp(const char *src_path, const char *dst_path)
+{
+    uint32_t src_inode_num;
+    if (ext2_resolve_path(src_path, &src_inode_num) < 0)
+    {
+        printf("cp: source not found: %s\n", src_path);
+        return;
+    }
+
+    struct ext2_inode src_inode;
+    ext2_read_inode(src_inode_num, &src_inode);
+
+    if (src_inode.i_mode & 0x4000)
+    {
+        printf("cp: source is a directory (not supported)\n");
+        return;
+    }
+
+    uint8_t *data_buf = kmalloc(EXT2_BLOCK_SIZE);
+    memset(data_buf, 0, EXT2_BLOCK_SIZE);
+    int size = 0;
+    if (src_inode.i_block[0] != 0)
+    {
+        ext2_read_block(src_inode.i_block[0], data_buf);
+        size = (src_inode.i_size < EXT2_BLOCK_SIZE) ? src_inode.i_size : EXT2_BLOCK_SIZE;
+    }
+
+    char parent_path[256], file_name[256];
+    split_path(dst_path, parent_path, file_name);
+
+    uint32_t parent_inode_num;
+    if (ext2_resolve_path(parent_path, &parent_inode_num) < 0)
+    {
+        printf("cp: destination directory not found: %s\n", parent_path);
+        kfree(data_buf);
+        return;
+    }
+
+    uint32_t new_inode_num = ext2_create_file(parent_inode_num, file_name, 0x8000 /* regular file */);
+    if (new_inode_num == 0)
+    {
+        printf("cp: failed to create destination file: %s\n", dst_path);
+        kfree(data_buf);
+        return;
+    }
+
+    struct ext2_inode new_inode;
+    ext2_read_inode(new_inode_num, &new_inode);
+    new_inode.i_size = size;
+    if (size > 0)
+    {
+        uint32_t new_block = ext2_allocate_block();
+        if (!new_block)
+        {
+            printf("cp: no free block available\n");
+            kfree(data_buf);
+            return;
+        }
+        new_inode.i_block[0] = new_block;
+        new_inode.i_blocks = 2; // 1 block = 2 in 512-byte units
+        ext2_write_block(new_block, data_buf);
+    }
+    ext2_write_inode(new_inode_num, &new_inode);
+
+    kfree(data_buf);
+    printf("cp: copied '%s' to '%s'\n", src_path, dst_path);
+}
+
+void ext2_cmd_mv(const char *src_path, const char *dst_path)
+{
+    uint32_t src_inode_num;
+    if (ext2_resolve_path(src_path, &src_inode_num) < 0)
+    {
+        printf("mv: source not found: %s\n", src_path);
+        return;
+    }
+
+    char src_parent[256], src_name[256];
+    split_path(src_path, src_parent, src_name);
+
+    char dst_parent[256], dst_name[256];
+    split_path(dst_path, dst_parent, dst_name);
+
+    uint32_t dst_parent_inode;
+    if (ext2_resolve_path(dst_parent, &dst_parent_inode) < 0)
+    {
+        printf("mv: destination directory not found: %s\n", dst_parent);
+        return;
+    }
+
+    uint32_t dst_inode_num;
+    if (ext2_resolve_path(dst_path, &dst_inode_num) == 0)
+    {
+        // For simplicity, we fail if destination exists
+        // (In real Unix, we'd remove it if it's a file, or fail if it's a non-empty directory)
+        printf("mv: destination already exists: %s\n", dst_path);
+        return;
+    }
+
+    struct ext2_inode src_inode;
+    ext2_read_inode(src_inode_num, &src_inode);
+    uint8_t file_type = (src_inode.i_mode & 0x4000) ? EXT2_FT_DIR : EXT2_FT_REG_FILE;
+    if (ext2_add_dir_entry(dst_parent_inode, dst_name, src_inode_num, file_type) < 0)
+    {
+        printf("mv: failed to create destination entry\n");
+        return;
+    }
+
+    uint32_t src_parent_inode;
+    if (ext2_resolve_path(src_parent, &src_parent_inode) < 0)
+    {
+        printf("mv: source parent not found?!\n");
+        return;
+    }
+    if (ext2_remove_dir_entry(src_parent_inode, src_name) < 0)
+    {
+        printf("mv: failed to remove old directory entry\n");
+        return;
+    }
+
+    printf("mv: moved '%s' to '%s'\n", src_path, dst_path);
+}
+
+
 static void cmd_ls();
 static void cmd_cat();
 static void cmd_touch();
@@ -587,6 +733,8 @@ static void cmd_mkdir();
 static void cmd_rm();
 static void cmd_rmdir();
 static void cmd_cd();
+static void cmd_cp();
+static void cmd_mv();
 
 command_t ext2_commands[] = {
     {"ls", "List directory contents", cmd_ls},
@@ -596,6 +744,8 @@ command_t ext2_commands[] = {
     {"rm", "Remove files or directories", cmd_rm},
     {"rmdir", "Remove directories", cmd_rmdir},
     {"cd", "Change the shell working directory", cmd_cd},
+    {"cp", "Copy a file", cmd_cp},
+    {"mv", "Move or rename a file", cmd_mv},
     {NULL, NULL, NULL}
 };
 
@@ -639,6 +789,42 @@ static void cmd_cd()
     printf("Enter the directory name: ");
     ext2_cmd_cd(get_line());
 }
+static void cmd_cp()
+{
+    printf("Enter source file: ");
+    char *src = get_line();
+    printf("Enter destination: ");
+    char *dst = get_line();
+    ext2_cmd_cp(src, dst);
+}
+
+static void cmd_mv()
+{
+    printf("Enter source file: ");
+    char *src = get_line();
+    printf("Enter destination: ");
+    char *dst = get_line();
+    ext2_cmd_mv(src, dst);
+}
+
+
+void create_unix_dirs()
+{
+    ext2_cmd_mkdir("bin");
+    ext2_cmd_mkdir("boot");
+    ext2_cmd_mkdir("dev");
+    ext2_cmd_mkdir("etc");
+    ext2_cmd_mkdir("home");
+    ext2_cmd_mkdir("lib");
+    ext2_cmd_mkdir("mnt");
+    ext2_cmd_mkdir("opt");
+    ext2_cmd_mkdir("proc");
+    ext2_cmd_mkdir("root");
+    ext2_cmd_mkdir("run");
+    ext2_cmd_mkdir("etc");
+    ext2_cmd_mv("users.config", "/etc/users.config");
+}
+
 
 void ext2_mount(void)
 {
@@ -658,4 +844,5 @@ void ext2_mount(void)
     ext2_read_block(ext2.gd.bg_block_bitmap, ext2.block_bitmap);
     kfree(buf);
     install_all_cmds(ext2_commands, GLOBAL);
+    create_unix_dirs();
 }
