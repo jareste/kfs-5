@@ -33,7 +33,7 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			scheduler.c sockets.c queue.c ide.c ext2.c users.c sha256.c \
 			strcpy.c users_api.c strncpy.c strncat.c strrchr.c \
 			strtok.c strcspn.c strspn.c strcat.c fs.c ushell.c env.c \
-			strchr.c
+			strchr.c memmove.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
 			  clear_registers.asm tasks.asm write.asm kill.asm \
@@ -116,9 +116,9 @@ crhello:
 format: crdisk
 	cc ext2_format_unix.c -o ext2_format
 	cp config/users.config .
-	echo "holaaaa" >> hellooooo.txt
-	./ext2_format disk.img users.config hellooooo.txt
-	rm ext2_format users.config
+	echo "holaaaa" >> hello124.txt
+	./ext2_format disk.img users.config hello124.txt
+	rm ext2_format users.config hello124.txt
 
 .PHONY: all clean fclean re run xorriso release run_release run_grub debug build_iso
 

@@ -4,9 +4,10 @@
 #include "../utils/stdint.h"
 #include "../utils/utils.h"
 
-#define USERS_CONFIG     "/users.config"
-#define NO_USER_LOGIN    "root"
-#define NO_USER_PASS     "root"
+#define INIT_USERS_CONFIG   "/users.config"
+#define USERS_CONFIG        "/etc/users.config"
+#define NO_USER_LOGIN       "root"
+#define NO_USER_PASS        "root"
 
 #define MAX_USER_NAME    32
 #define SHA256_HEX_LEN   64
@@ -33,5 +34,6 @@ void list_users();
 
 bool user_exists(const char *name);
 bool current_user_is_valid();
+void check_file_location();
 
 #endif

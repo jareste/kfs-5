@@ -25,6 +25,9 @@ void cmd_touch();
 void cmd_mkdir();
 void cmd_pwd();
 void cmd_write();
+void cmd_rm();
+void cmd_mv();
+void cmd_cp();
 
 int ext2_read_inode(uint32_t inode_num, ext2_inode_t* inode);
 static int ext2_write_inode(uint32_t inode_num, const ext2_inode_t* inode);
@@ -37,6 +40,9 @@ command_t ext2_commands[] = {
     {"mkdir", "Make directories", cmd_mkdir},
     {"pwd", "Print name of current/working directory", cmd_pwd},
     {"write", "Write 'Hello from ext2!' to hello.txt", cmd_write},
+    {"rm", "Remove files or directories", cmd_rm},
+    {"mv", "Move files or directories", cmd_mv},
+    {"cp", "Copy files or directories", cmd_cp},
     {NULL, NULL, NULL}
 };
 
@@ -589,6 +595,85 @@ int ext2_list_dir(const ext2_inode_t* dir_inode)
     return 0;
 }
 
+void split_path(const char* path, char* parent, char* base, int maxlen)
+{
+    char temp[MAX_PATH_LENGTH];
+    strncpy(temp, path, MAX_PATH_LENGTH);
+    temp[MAX_PATH_LENGTH - 1] = '\0';
+    char *slash = strrchr(temp, '/');
+    if (slash == NULL)
+    {
+        /* No slash: assume current directory as parent */
+        strcpy(parent, ".");
+        strcpy(base, temp);
+    }
+    else
+    {
+        if (slash == temp)
+        {
+            /* Only one slash at the beginning => parent is root */
+            strcpy(parent, "/");
+        }
+        else
+        {
+            *slash = '\0';
+            strcpy(parent, temp);
+        }
+        strcpy(base, slash + 1);
+    }
+}
+
+int ext2_remove_dir_entry(uint32_t parent_inode_num, ext2_inode_t* parent_inode, const char* name)
+{
+    uint8_t block_buf[EXT2_BLOCK_SIZE];
+    uint32_t block = parent_inode->i_block[0];
+    if (block == 0) return -1;
+    read_block(block, block_buf);
+    uint32_t offset = 0;
+    ext2_dir_entry_t* entry = NULL;
+    ext2_dir_entry_t* prev = NULL;
+    while (offset < EXT2_BLOCK_SIZE)
+    {
+        entry = (ext2_dir_entry_t*)(block_buf + offset);
+        if (entry->inode != 0 &&
+            entry->name_len == strlen(name) &&
+            memcmp(entry->name, name, entry->name_len) == 0)
+        {
+            break;
+        }
+        prev = entry;
+        offset += entry->rec_len;
+    }
+    if (offset >= EXT2_BLOCK_SIZE) return -1;
+
+    if (prev == NULL)
+    {
+        /* Entry is the first in the block.
+           Shift the remainder of the block left and adjust the last entry's rec_len.
+        */
+        uint32_t remove_len = entry->rec_len;
+        memmove(block_buf, block_buf + remove_len, EXT2_BLOCK_SIZE - remove_len);
+        uint32_t temp_offset = 0;
+        ext2_dir_entry_t* last = NULL;
+        while (temp_offset < EXT2_BLOCK_SIZE)
+        {
+            last = (ext2_dir_entry_t*)(block_buf + temp_offset);
+            temp_offset += last->rec_len;
+        }
+        if (last)
+        {
+            last->rec_len = EXT2_BLOCK_SIZE - ((uint8_t*)last - block_buf);
+        }
+    }
+    else
+    {
+        /* Merge removed entry's rec_len into previous entry */
+        prev->rec_len += entry->rec_len;
+    }
+    write_block(block, block_buf);
+    return 0;
+}
+
 void cmd_cd()
 {
     char* dirname;
@@ -690,54 +775,84 @@ static uint32_t ext2_alloc_block(void)
     return next_free_block++;
 }
 
-static int ext2_add_dir_entry(ext2_inode_t* parent_inode, uint32_t parent_inode_num, const char* name, uint32_t child_inode, uint8_t file_type)
+static int ext2_add_dir_entry(ext2_inode_t* parent_inode, uint32_t parent_inode_num,
+                              const char* name, uint32_t child_inode, uint8_t file_type)
 {
     uint8_t block_buf[EXT2_BLOCK_SIZE];
-    uint32_t block = parent_inode->i_block[0];
-    if (block == 0)
+    uint16_t new_entry_size = 4 * (((8 + strlen(name)) + 3) / 4);
+
+    for (int i = 0; i < 12; i++)
     {
-        block = ext2_alloc_block();
+        uint32_t block = parent_inode->i_block[i];
+
         if (block == 0)
         {
-            return -1;
-        }
-        parent_inode->i_block[0] = block;
-        parent_inode->i_size = EXT2_BLOCK_SIZE;
-        memset(block_buf, 0, EXT2_BLOCK_SIZE);
-        write_block(block, block_buf);
-    }
-    
-    read_block(block, block_buf);
-    uint32_t offset = 0;
-    ext2_dir_entry_t* entry = NULL;
-    while (offset < EXT2_BLOCK_SIZE)
-    {
-        entry = (ext2_dir_entry_t*)(block_buf + offset);
-        if(entry->inode == 0)
-        {
-            break;
-        }
-        uint16_t ideal_len = 4 * (((8 + entry->name_len) + 3) / 4);
-        uint16_t available = entry->rec_len - ideal_len;
-        uint16_t new_entry_size = 4 * (((8 + strlen(name)) + 3) / 4);
-        if (available >= new_entry_size)
-        {
-            entry->rec_len = ideal_len;
-            ext2_dir_entry_t* new_entry = (ext2_dir_entry_t*)((uint8_t*)entry + ideal_len);
-            new_entry->inode = child_inode;
-            new_entry->name_len = strlen(name);
-            new_entry->file_type = file_type;
-            new_entry->rec_len = available;
-            memcpy(new_entry->name, name, new_entry->name_len);
-            new_entry->name[new_entry->name_len] = '\0';
+            block = ext2_alloc_block();
+            if (block == 0)
+            {
+                printf("ext2_add_dir_entry: Failed to allocate new block.\n");
+                return -1;
+            }
+            parent_inode->i_block[i] = block;
+            memset(block_buf, 0, EXT2_BLOCK_SIZE);
+            ext2_dir_entry_t* entry = (ext2_dir_entry_t*)block_buf;
+            entry->inode = child_inode;
+            entry->name_len = strlen(name);
+            entry->file_type = file_type;
+            entry->rec_len = EXT2_BLOCK_SIZE; // entire block
+            memcpy(entry->name, name, entry->name_len);
+            entry->name[entry->name_len] = '\0';
             write_block(block, block_buf);
+            if (parent_inode->i_size < (i + 1) * EXT2_BLOCK_SIZE)
+                parent_inode->i_size = (i + 1) * EXT2_BLOCK_SIZE;
             ext2_write_inode(parent_inode_num, parent_inode);
             return 0;
         }
-        offset += entry->rec_len;
+        else
+        {
+            read_block(block, block_buf);
+            uint32_t offset = 0;
+            while (offset < EXT2_BLOCK_SIZE)
+            {
+                ext2_dir_entry_t* entry = (ext2_dir_entry_t*)(block_buf + offset);
+                if (entry->inode == 0)
+                {
+                    entry->inode = child_inode;
+                    entry->name_len = strlen(name);
+                    entry->file_type = file_type;
+                    entry->rec_len = EXT2_BLOCK_SIZE - offset;
+                    memcpy(entry->name, name, entry->name_len);
+                    entry->name[entry->name_len] = '\0';
+                    write_block(block, block_buf);
+                    return 0;
+                }
+                else
+                {
+                    uint16_t ideal_len = 4 * (((8 + entry->name_len) + 3) / 4);
+                    uint16_t available = entry->rec_len - ideal_len;
+                    if (available >= new_entry_size)
+                    {
+                        entry->rec_len = ideal_len;
+                    
+                        ext2_dir_entry_t* new_entry = (ext2_dir_entry_t*)(block_buf + offset + ideal_len);
+                        new_entry->inode = child_inode;
+                        new_entry->name_len = strlen(name);
+                        new_entry->file_type = file_type;
+                        new_entry->rec_len = available;
+                        memcpy(new_entry->name, name, new_entry->name_len);
+                        new_entry->name[new_entry->name_len] = '\0';
+                        write_block(block, block_buf);
+                        return 0;
+                    }
+                    offset += entry->rec_len;
+                }
+            }
+        }
     }
+    printf("ext2_add_dir_entry: No space in directory (all direct blocks full).\n");
     return -1;
 }
+
 
 void cmd_mkdir()
 {
@@ -804,6 +919,293 @@ void cmd_mkdir()
     ext2_write_inode(g_current_dir_inode_num, &g_current_dir_inode);
 
     printf("Directory '%s' created.\n", dirname);
+}
+
+int mv_file(const char *src_path, const char *dest_path)
+{
+    uint32_t src_inode_num = convert_path_to_inode(src_path);
+    if (src_inode_num == 0)
+    {
+        printf("mv_file: Source file/directory not found!\n");
+        return -1;
+    }
+    char src_parent_path[MAX_PATH_LENGTH], src_base[MAX_PATH_LENGTH];
+    split_path(src_path, src_parent_path, src_base, MAX_PATH_LENGTH);
+    uint32_t src_parent_inode_num = convert_path_to_inode(src_parent_path);
+    if (src_parent_inode_num == 0)
+    {
+        printf("mv_file: Source parent directory not found!\n");
+        return -1;
+    }
+    ext2_inode_t src_parent_inode;
+    ext2_read_inode(src_parent_inode_num, &src_parent_inode);
+
+    /* Remove the source entry from its parent directory */
+    if (ext2_remove_dir_entry(src_parent_inode_num, &src_parent_inode, src_base) < 0)
+    {
+        printf("mv_file: Failed to remove source entry from its parent directory.\n");
+        return -1;
+    }
+
+    printf("mv_file: Source entry removed from parent directory.\n");
+    uint32_t dest_inode_num = convert_path_to_inode(dest_path);
+    if (dest_inode_num == 2 && strcmp(dest_path, "/") != 0)
+        dest_inode_num = 0;
+    printf("mv_file: Destination inode number: %d, '%s'\n", dest_inode_num, dest_path);
+    char new_name[MAX_PATH_LENGTH];
+    uint32_t dest_parent_inode_num;
+    ext2_inode_t dest_parent_inode;
+    if (dest_inode_num != 0)
+    {
+        ext2_inode_t dest_inode;
+        ext2_read_inode(dest_inode_num, &dest_inode);
+        if (S_ISDIR(dest_inode.i_mode))
+        {
+            dest_parent_inode_num = dest_inode_num;
+            strcpy(new_name, src_base);
+        }
+        else
+        {
+            char dest_parent_path[MAX_PATH_LENGTH], dest_base[MAX_PATH_LENGTH];
+            split_path(dest_path, dest_parent_path, dest_base, MAX_PATH_LENGTH);
+            dest_parent_inode_num = convert_path_to_inode(dest_parent_path);
+            if (dest_parent_inode_num == 0)
+            {
+                printf("mv_file: Destination parent directory not found!\n");
+                return -1;
+            }
+            strcpy(new_name, dest_base);
+        }
+    }
+    else
+    {
+        char dest_parent_path[MAX_PATH_LENGTH], dest_base[MAX_PATH_LENGTH];
+        split_path(dest_path, dest_parent_path, dest_base, MAX_PATH_LENGTH);
+        dest_parent_inode_num = convert_path_to_inode(dest_parent_path);
+        if (dest_parent_inode_num == 0)
+        {
+            printf("mv_file: Destination parent directory not found!\n");
+            return -1;
+        }
+        strcpy(new_name, dest_base);
+    }
+    printf("mv_file: Destination parent inode number: %d, '%s'\n", dest_parent_inode_num, new_name);
+    ext2_read_inode(dest_parent_inode_num, &dest_parent_inode);
+
+    ext2_inode_t src_inode;
+    ext2_read_inode(src_inode_num, &src_inode);
+    uint8_t file_type = S_ISDIR(src_inode.i_mode) ? 2 : 1;
+    if (ext2_add_dir_entry(&dest_parent_inode, dest_parent_inode_num, new_name, src_inode_num, file_type) < 0)
+    {
+        printf("mv_file: Failed to add entry to destination directory.\n");
+        return -1;
+    }
+    ext2_write_inode(dest_parent_inode_num, &dest_parent_inode);
+    return 0;
+}
+
+int cp_file(const char *src_path, const char *dest_path)
+{
+    uint32_t src_inode_num = convert_path_to_inode(src_path);
+    if (src_inode_num == 0)
+    {
+        printf("cp_file: Source file not found!\n");
+        return -1;
+    }
+    ext2_inode_t src_inode;
+    ext2_read_inode(src_inode_num, &src_inode);
+    if (!S_ISREG(src_inode.i_mode))
+    {
+        printf("cp_file: Source is not a regular file!\n");
+        return -1;
+    }
+
+    /* Read the source file data (assuming one block) */
+    uint8_t *data = kmalloc(src_inode.i_size);
+    if (!data)
+    {
+        printf("cp_file: Memory allocation failed.\n");
+        return -1;
+    }
+    int bytes_read = ext2_read_data(&src_inode, 0, src_inode.i_size, data);
+    if (bytes_read < 0)
+    {
+        printf("cp_file: Failed to read source file data.\n");
+        kfree(data);
+        return -1;
+    }
+
+    /* Allocate a new inode and block for the copy */
+    uint32_t new_inode_num = ext2_alloc_inode();
+    if (new_inode_num == 0)
+    {
+        printf("cp_file: No free inodes available for copy.\n");
+        kfree(data);
+        return -1;
+    }
+    uint32_t new_block = ext2_alloc_block();
+    if (new_block == 0)
+    {
+        printf("cp_file: No free blocks available for copy.\n");
+        kfree(data);
+        return -1;
+    }
+    ext2_inode_t new_file;
+    memset(&new_file, 0, sizeof(new_file));
+    new_file.i_mode = S_IFREG | 0644;
+    new_file.i_size = 0;
+    new_file.i_links_count = 1;
+    new_file.i_block[0] = new_block;
+    ext2_write_inode(new_inode_num, &new_file);
+
+    /* Write the data into the new file */
+    int bytes_written = ext2_write_data(&new_file, 0, data, bytes_read);
+    if (bytes_written < 0)
+    {
+        printf("cp_file: Failed to write data to new file.\n");
+        kfree(data);
+        return -1;
+    }
+    new_file.i_size = bytes_written;
+    ext2_write_inode(new_inode_num, &new_file);
+    kfree(data);
+
+    uint32_t dest_parent_inode_num;
+    char new_name[MAX_PATH_LENGTH];
+    uint32_t dest_inode_num = convert_path_to_inode(dest_path);
+    if (dest_inode_num == 2 && strcmp(dest_path, "/") != 0)
+        dest_inode_num = 0;
+    ext2_inode_t dest_parent_inode;
+    if (dest_inode_num != 0)
+    {
+        ext2_inode_t dest_inode;
+        ext2_read_inode(dest_inode_num, &dest_inode);
+        if (S_ISDIR(dest_inode.i_mode))
+        {
+            dest_parent_inode_num = dest_inode_num;
+            char src_parent[MAX_PATH_LENGTH], src_base[MAX_PATH_LENGTH];
+            split_path(src_path, src_parent, src_base, MAX_PATH_LENGTH);
+            strcpy(new_name, src_base);
+        }
+        else
+        {
+            char dest_parent_path[MAX_PATH_LENGTH], dest_base[MAX_PATH_LENGTH];
+            split_path(dest_path, dest_parent_path, dest_base, MAX_PATH_LENGTH);
+            dest_parent_inode_num = convert_path_to_inode(dest_parent_path);
+            if (dest_parent_inode_num == 0)
+            {
+                printf("cp_file: Destination parent directory not found!\n");
+                return -1;
+            }
+            strcpy(new_name, dest_base);
+        }
+    }
+    else
+    {
+        char dest_parent_path[MAX_PATH_LENGTH], dest_base[MAX_PATH_LENGTH];
+        split_path(dest_path, dest_parent_path, dest_base, MAX_PATH_LENGTH);
+        dest_parent_inode_num = convert_path_to_inode(dest_parent_path);
+        if (dest_parent_inode_num == 0)
+        {
+            printf("cp_file: Destination parent directory not found!\n");
+            return -1;
+        }
+        strcpy(new_name, dest_base);
+    }
+    ext2_read_inode(dest_parent_inode_num, &dest_parent_inode);
+    if (ext2_add_dir_entry(&dest_parent_inode, dest_parent_inode_num, new_name, new_inode_num, 1) < 0)
+    {
+        printf("cp_file: Failed to add copy to destination directory.\n");
+        return -1;
+    }
+    ext2_write_inode(dest_parent_inode_num, &dest_parent_inode);
+    return 0;
+}
+
+int rm_file(const char *path)
+{
+    uint32_t target_inode_num = convert_path_to_inode(path);
+    if (target_inode_num == 0)
+    {
+        printf("rm_file: File/directory not found!\n");
+        return -1;
+    }
+    ext2_inode_t target_inode;
+    ext2_read_inode(target_inode_num, &target_inode);
+    if (S_ISDIR(target_inode.i_mode))
+    {
+        printf("rm_file: Removing directories is not supported!\n");
+        return -1;
+    }
+    
+    char parent_path[MAX_PATH_LENGTH], base[MAX_PATH_LENGTH];
+    split_path(path, parent_path, base, MAX_PATH_LENGTH);
+    uint32_t parent_inode_num = convert_path_to_inode(parent_path);
+    if (parent_inode_num == 0)
+    {
+        printf("rm_file: Parent directory not found!\n");
+        return -1;
+    }
+    ext2_inode_t parent_inode;
+    ext2_read_inode(parent_inode_num, &parent_inode);
+    if (ext2_remove_dir_entry(parent_inode_num, &parent_inode, base) < 0)
+    {
+        printf("rm_file: Failed to remove file entry from directory.\n");
+        return -1;
+    }
+    ext2_write_inode(parent_inode_num, &parent_inode);
+    
+    if (target_inode.i_links_count > 0)
+    {
+        target_inode.i_links_count--;
+        if (target_inode.i_links_count == 0)
+        {
+            target_inode.i_mode = 0;
+        }
+        ext2_write_inode(target_inode_num, &target_inode);
+    }
+    return 0;
+}
+
+void cmd_mv(void)
+{
+    char src_path[MAX_PATH_LENGTH];
+    char dest_path[MAX_PATH_LENGTH];
+    printf("Enter source file path: ");
+    strcpy(src_path, get_line());
+    printf("Enter destination path: ");
+    strcpy(dest_path, get_line());
+
+    if (mv_file(src_path, dest_path) == 0)
+        printf("Moved '%s' to '%s' successfully.\n", src_path, dest_path);
+    else
+        printf("Failed to move '%s' to '%s'.\n", src_path, dest_path);
+}
+
+void cmd_cp(void)
+{
+    char src_path[MAX_PATH_LENGTH];
+    char dest_path[MAX_PATH_LENGTH];
+    printf("Enter source file path: ");
+    strcpy(src_path, get_line());
+    printf("Enter destination path: ");
+    strcpy(dest_path, get_line());
+
+    if (cp_file(src_path, dest_path) == 0)
+        printf("Copied '%s' to '%s' successfully.\n", src_path, dest_path);
+    else
+        printf("Failed to copy '%s' to '%s'.\n", src_path, dest_path);
+}
+
+void cmd_rm(void)
+{
+    char *path;
+    printf("Enter file path to remove: ");
+    path = get_line();
+    if (rm_file(path) == 0)
+        printf("Removed '%s' successfully.\n", path);
+    else
+        printf("Failed to remove '%s'.\n", path);
 }
 
 void cmd_touch()
@@ -889,9 +1291,8 @@ ext2_file_t* ext2_open(const char* filename, const char* mode)
     //     printf("ext2_open: File '%s' not found!\n", filename);
     //     return NULL;
     // }
-
     uint32_t ino = convert_path_to_inode(filename);
-    if (ino == 0)
+    if (ino == 0 || (ino == 2 && strcmp(filename, "/") != 0))
     {
         printf("ext2_open: File '%s' not found!\n", filename);
         return NULL;

@@ -85,3 +85,22 @@ void list_users()
     ext2_close(fp);
 }
 
+void check_file_location()
+{
+    ext2_file_t *fp;
+    fp = ext2_open(USERS_CONFIG, "rb");
+    if (fp)
+    {
+        ext2_close(fp);
+        return;
+    }
+    fp = ext2_open(INIT_USERS_CONFIG, "rb");
+    if (!fp)
+    {
+        printf("No users config file found.\n");
+        return;
+    }
+    ext2_close(fp);
+    mv_file(INIT_USERS_CONFIG, USERS_CONFIG);
+    return;
+}
