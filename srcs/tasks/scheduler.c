@@ -29,6 +29,14 @@ static command_t commands[] = {
     {NULL, NULL, NULL}
 };
 
+static char* default_envp[] = {
+    "PATH=/bin:/usr/bin",
+    "HOME=/",
+    "USER=root",
+    "SHELL=/bin/ushell",
+    NULL
+};
+
 task_t* current_task = NULL;
 task_t* task_list = NULL;
 task_t* to_free = NULL;
@@ -68,12 +76,18 @@ void remove_from_father(task_t* task)
     }
 }
 
+void free_envp(task_t* task)
+{
+    env_hashtable_destroy(task->env);
+}
+
 void free_finished_tasks()
 {
     if (!to_free)
         return;
     dtach_from_childs(to_free);
     remove_from_father(to_free);
+    free_envp(to_free);
     kfree((void*)to_free->kernel_stack);
     kfree((void*)to_free->stack);
     kfree(to_free);
@@ -199,6 +213,7 @@ void scheduler(void)
     
     // puts_color("Scheduler\n", current_task->pid); // easy way of seeing scheduler working.
     // puts_color("Scheduler\n", LIGHT_MAGENTA);
+    set_active_env(next->env);
     if (next->is_user)
     {
         // puts_color("Switching to user\n", LIGHT_MAGENTA);
@@ -342,6 +357,7 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->euid = 0;
     task->gid = 0;
     task->is_user = false;
+    task->env = NULL; /* Kernel tasks don't need envp. */
     init_signals(task);
     add_new_task(task);
     // printf("Task %d created\n", task->pid);
@@ -354,6 +370,7 @@ void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
     uint32_t *user_stack;
     uint32_t *kernel_stack;
     uint32_t *user_stack_top;
+    int env_size;
 
     if (task_index >= MAX_ACTIVE_TASKS)
     {
@@ -382,6 +399,19 @@ void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
     printf("User stack top after building iret frame: %p\n", user_stack);
 
     make_page_user((uintptr_t)entry);
+
+    task->env = env_hashtable_create(128);
+    for (int i = 0; default_envp[i]; i++)
+    {
+        char *key = default_envp[i];
+        char *equal = strchr(key, '=');
+        char* value = equal + 1;
+        *equal = '\0';
+        *value = '\0';
+        value++;
+        env_hashtable_set(task->env, key, value);
+        *equal = '=';
+    }
 
     task->pid = task_index++;
     task->cpu.esp_ = (uint32_t)user_stack;

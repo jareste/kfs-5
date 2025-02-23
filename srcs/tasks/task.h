@@ -5,6 +5,7 @@
 #include "../keyboard/signals.h"
 #include "../utils/utils.h"
 #include "cpu_state.h"
+#include "env.h"
 
 typedef enum
 {
@@ -44,6 +45,8 @@ typedef struct task_struct
     uid_t euid;
     gid_t gid;
     bool is_user;
+
+    env_hashtable_t *env;
     /* missing fields but untill it'll not work makes no sense to add them */    
 } task_t;
 
