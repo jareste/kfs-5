@@ -117,6 +117,7 @@ crdisk:
 # dd if=/dev/zero of=disk.img bs=512 count=20480
 
 format: crdisk
+	- mkdir mnt_ext2
 	cc ext2_format.c -o ext2_format
 	cp config/users.config .
 	echo "holaaaa" >> hello124.txt
@@ -127,6 +128,7 @@ format: crdisk
 	sudo cp users.config mnt_ext2/.
 	sudo rm -rf lost+found
 	sudo umount mnt_ext2
+	rmdir mnt_ext2
 # sudo ./ext2_format disk.img users.config hello124.txt
 	rm ext2_format users.config hello124.txt
 
