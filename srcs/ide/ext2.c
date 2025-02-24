@@ -5,6 +5,7 @@
 #include "../utils/stdint.h"
 #include "../kshell/kshell.h"
 #include "../display/display.h"
+#include "ext2_fileio.h"
 
 extern int ide_read_sectors(uint32_t lba, uint8_t count, void *buffer);
 extern int ide_write_sectors(uint32_t lba, uint8_t count, void *buffer);
@@ -321,6 +322,193 @@ static int ext2_create_file(uint32_t parent_inode_num, const char *name, uint16_
     return new_inode;
 }
 
+static void ext2_truncate_inode(uint32_t inode_num, struct ext2_inode *inode)
+{
+    if (inode->i_block[0] != 0)
+    {
+        ext2_free_block(inode->i_block[0]);
+        inode->i_block[0] = 0;
+    }
+    inode->i_size = 0;
+    inode->i_blocks = 0;
+    ext2_write_inode(inode_num, inode);
+}
+
+ext2_FILE *ext2_fopen(const char *path, const char *mode)
+{
+    int allow_write = 0;
+    int truncate = 0;
+    int append = 0;
+    if (strcmp(mode, "r") == 0)
+    {
+        allow_write = 0;
+    }
+    else if (strcmp(mode, "w") == 0)
+    {
+        allow_write = 1;
+        truncate = 1;
+    }
+    else if (strcmp(mode, "r+") == 0)
+    {
+        allow_write = 1;
+        /* no truncation */
+    }
+    else if (strcmp(mode, "a") == 0)
+    {
+        allow_write = 1;
+        append = 1;
+    }
+    else
+    {
+        printf("ext2_fopen: unsupported mode '%s'\n", mode);
+        return NULL;
+    }
+
+    uint32_t inode_num;
+    if (ext2_resolve_path(path, &inode_num) < 0)
+    {
+        if (!allow_write)
+        {
+            printf("ext2_fopen: file not found '%s'\n", path);
+            return NULL;
+        }
+        
+        char parent_path[256], file_name[256];
+        split_path(path, parent_path, file_name);
+        uint32_t parent_inode;
+        if (ext2_resolve_path(parent_path, &parent_inode) < 0)
+        {
+            printf("ext2_fopen: parent directory not found '%s'\n", parent_path);
+            return NULL;
+        }
+        uint32_t new_inode = ext2_create_file(parent_inode, file_name, 0x8000);
+        if (!new_inode)
+        {
+            printf("ext2_fopen: cannot create file '%s'\n", path);
+            return NULL;
+        }
+        inode_num = new_inode;
+    }
+
+    struct ext2_inode in;
+    ext2_read_inode(inode_num, &in);
+    if (in.i_mode & 0x4000)
+    {
+        printf("ext2_fopen: '%s' is a directory\n", path);
+        return NULL;
+    }
+
+    if (truncate)
+    {
+        ext2_truncate_inode(inode_num, &in);
+    }
+
+    ext2_FILE *fp = kmalloc(sizeof(ext2_FILE));
+    fp->inode_num = inode_num;
+    fp->inode = in;
+    fp->pos = 0;
+    fp->mode = allow_write;
+
+    if (append)
+    {
+        fp->pos = fp->inode.i_size;
+    }
+
+    return fp;
+}
+
+int ext2_fclose(ext2_FILE *stream)
+{
+    if (!stream) return -1;
+    kfree(stream);
+    return 0;
+}
+
+size_t ext2_fread(void *ptr, size_t size, size_t nmemb, ext2_FILE *stream)
+{
+    if (!stream) return 0;
+    if (stream->mode != 0)
+    {
+        printf("ext2_fread: file not opened for reading\n");
+        return 0;
+    }
+
+    size_t total = size * nmemb;
+    if (total == 0) return 0;
+
+    if (stream->pos >= stream->inode.i_size)
+    {
+        return 0;
+    }
+
+    size_t remain = stream->inode.i_size - stream->pos;
+    if (remain < total)
+    {
+        total = remain;
+    }
+
+    if (stream->inode.i_block[0] == 0)
+    {
+        return 0;
+    }
+
+    uint8_t blockbuf[EXT2_BLOCK_SIZE];
+    ext2_read_block(stream->inode.i_block[0], blockbuf);
+
+    memcpy(ptr, blockbuf + stream->pos, total);
+
+    stream->pos += total;
+
+    return total / size;
+}
+
+size_t ext2_fwrite(const void *ptr, size_t size, size_t nmemb, ext2_FILE *stream)
+{
+    if (!stream) return 0;
+    if (stream->mode != 1)
+    {
+        printf("ext2_fwrite: file not opened for writing\n");
+        return 0;
+    }
+
+    size_t total = size * nmemb;
+    if (total == 0) return 0;
+
+    if (stream->inode.i_block[0] == 0)
+    {
+        uint32_t new_block = ext2_allocate_block();
+        if (!new_block)
+        {
+            printf("ext2_fwrite: no free block\n");
+            return 0;
+        }
+        stream->inode.i_block[0] = new_block;
+        stream->inode.i_blocks = 2;
+    }
+
+    uint8_t blockbuf[EXT2_BLOCK_SIZE];
+    ext2_read_block(stream->inode.i_block[0], blockbuf);
+
+    size_t space = EXT2_BLOCK_SIZE - stream->pos;
+    if (space < total)
+    {
+        total = space;
+    }
+
+    memcpy(blockbuf + stream->pos, ptr, total);
+
+    ext2_write_block(stream->inode.i_block[0], blockbuf);
+
+    stream->pos += total;
+    if (stream->pos > stream->inode.i_size)
+    {
+        stream->inode.i_size = stream->pos;
+    }
+    ext2_write_inode(stream->inode_num, &stream->inode);
+
+    return total / size; /* number of "elements" written */
+}
+
 /* --- Command Implementations --- */
 void ext2_cmd_ls(const char *path)
 {
@@ -420,9 +608,21 @@ void ext2_cmd_touch(const char *path)
 
 void ext2_cmd_mkdir(const char *path)
 {
-    char parent_path[256], dir_name[256];
+    char parent_path[256];
+    char dir_name[256];
+    char *last_slash;
+    uint32_t parent;
+
+    /* check if it exists. */
+    if (ext2_resolve_path(path, &parent) == 0)
+    {
+        printf("Directory '%s' already exists\n", path);
+        return;
+    }
+
     strcpy(parent_path, path);
-    char *last_slash = strrchr(parent_path, '/');
+    last_slash = strrchr(parent_path, '/');
+    
     if (last_slash)
     {
         strcpy(dir_name, last_slash+1);
@@ -436,7 +636,6 @@ void ext2_cmd_mkdir(const char *path)
         strcpy(dir_name, path);
         strcpy(parent_path, ".");
     }
-    uint32_t parent;
     if (ext2_resolve_path(parent_path, &parent) < 0)
     {
         printf("Parent directory not found\n");
@@ -825,6 +1024,30 @@ void create_unix_dirs()
     ext2_cmd_mv("users.config", "/etc/users.config");
 }
 
+void test_fileio()
+{
+    ext2_FILE *f = ext2_fopen("hello.txt", "w");
+    if (!f)
+    {
+        printf("Failed to open hello.txt for writing\n");
+        return;
+    }
+    const char *msg = "Hello from ext12_fwrite!\n";
+    ext2_fwrite(msg, 1, strlen(msg), f);
+    ext2_fclose(f);
+
+    f = ext2_fopen("hello.txt", "r");
+    if (!f)
+    {
+        printf("Failed to open hello.txt for reading\n");
+        return;
+    }
+    char buf[128];
+    memset(buf, 0, sizeof(buf));
+    size_t n = ext2_fread(buf, 1, sizeof(buf) - 1, f);
+    printf("Read %u bytes: %s\n", (unsigned)n, buf);
+    ext2_fclose(f);
+}
 
 void ext2_mount(void)
 {
@@ -845,4 +1068,5 @@ void ext2_mount(void)
     kfree(buf);
     install_all_cmds(ext2_commands, GLOBAL);
     create_unix_dirs();
+    test_fileio();
 }
