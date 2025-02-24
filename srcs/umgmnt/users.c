@@ -39,7 +39,7 @@ bool find_user_by_name(const char *name, user_t* u)
     }
 
     ext2_fclose(fp);
-    printf("User '%s' not found.\n", name);
+    // printf("User '%s' not found.\n", name);
     return false;
 }
 

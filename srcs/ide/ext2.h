@@ -95,5 +95,8 @@ void ext2_cmd_mkdir(const char* path);
 void ext2_cmd_rm(const char* path);
 void ext2_cmd_rmdir(const char* path);
 void ext2_cmd_cd(const char* path);
+uint32_t ext2_get_inode(const char *path);
+
+void set_current_dir(uint32_t inode);
 
 #endif

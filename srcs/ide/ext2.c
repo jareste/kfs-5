@@ -24,6 +24,11 @@ struct ext2_fs
 
 static uint32_t current_dir = EXT2_ROOT_INODE;  /* current working directory inode */
 
+void set_current_dir(uint32_t inode)
+{
+    current_dir = inode;
+}
+
 static void split_path(const char *full_path, char *out_parent, char *out_name)
 {
     char temp[256];
@@ -332,6 +337,95 @@ static void ext2_truncate_inode(uint32_t inode_num, struct ext2_inode *inode)
     inode->i_size = 0;
     inode->i_blocks = 0;
     ext2_write_inode(inode_num, inode);
+}
+
+/* Get inode from path */
+uint32_t ext2_get_inode(const char *path)
+{
+    uint32_t inode_num;
+    if (ext2_resolve_path(path, &inode_num) < 0)
+    {
+        printf("ext2_get_inode: path not found: %s\n", path);
+        return 0;
+    }
+    return inode_num;
+}
+
+char *ext2_pwd(void)
+{
+    if (current_dir == EXT2_ROOT_INODE)
+        return vstrdup("/");
+
+    char *components[32];
+    int count = 0;
+    uint32_t curr = current_dir;
+
+    while (curr != EXT2_ROOT_INODE)
+    {
+        struct ext2_inode curr_inode;
+        ext2_read_inode(curr, &curr_inode);
+
+        if (curr_inode.i_block[0] == 0)
+            break;
+
+        uint8_t *buf = kmalloc(EXT2_BLOCK_SIZE);
+        ext2_read_block(curr_inode.i_block[0], buf);
+
+        struct ext2_dir_entry *dot = (struct ext2_dir_entry *)buf;
+        struct ext2_dir_entry *dotdot = (struct ext2_dir_entry *)(buf + dot->rec_len);
+        uint32_t parent = dotdot->inode;
+        kfree(buf);
+
+        if (parent == curr)
+            break;
+
+        struct ext2_inode parent_inode;
+        ext2_read_inode(parent, &parent_inode);
+        if (parent_inode.i_block[0] == 0)
+            break;
+        uint8_t *pbuf = kmalloc(EXT2_BLOCK_SIZE);
+        ext2_read_block(parent_inode.i_block[0], pbuf);
+
+        int offset = 0;
+        char name[256];
+        int found = 0;
+        while (offset < EXT2_BLOCK_SIZE)
+        {
+            struct ext2_dir_entry *entry = (struct ext2_dir_entry *)(pbuf + offset);
+            if (entry->inode == curr && entry->name_len > 0 &&
+                strcmp(entry->name, ".") != 0 &&
+                strcmp(entry->name, "..") != 0)
+            {
+                memcpy(name, entry->name, entry->name_len);
+                name[entry->name_len] = '\0';
+                found = 1;
+                break;
+            }
+            offset += entry->rec_len;
+        }
+        kfree(pbuf);
+
+        if (!found)
+        {
+            /* Fall back: convert inode number to string */
+            uitoa(curr, name);
+        }
+        components[count++] = vstrdup(name);
+        curr = parent;
+        if (curr == EXT2_ROOT_INODE)
+            break;
+    }
+
+    char *pwd = kmalloc(256);
+    strcpy(pwd, "/");
+    for (int i = count - 1; i >= 0; i--) 
+    {
+        strcat(pwd, components[i]);
+        if (i > 0)
+            strcat(pwd, "/");
+        kfree(components[i]);
+    }
+    return pwd;
 }
 
 ext2_FILE *ext2_fopen(const char *path, const char *mode)
@@ -924,7 +1018,6 @@ void ext2_cmd_mv(const char *src_path, const char *dst_path)
     printf("mv: moved '%s' to '%s'\n", src_path, dst_path);
 }
 
-
 static void cmd_ls();
 static void cmd_cat();
 static void cmd_touch();
@@ -934,6 +1027,7 @@ static void cmd_rmdir();
 static void cmd_cd();
 static void cmd_cp();
 static void cmd_mv();
+static void cmd_pwd(void);
 
 command_t ext2_commands[] = {
     {"ls", "List directory contents", cmd_ls},
@@ -945,6 +1039,7 @@ command_t ext2_commands[] = {
     {"cd", "Change the shell working directory", cmd_cd},
     {"cp", "Copy a file", cmd_cp},
     {"mv", "Move or rename a file", cmd_mv},
+    {"pwd", "Print working directory", cmd_pwd},
     {NULL, NULL, NULL}
 };
 
@@ -1006,6 +1101,19 @@ static void cmd_mv()
     ext2_cmd_mv(src, dst);
 }
 
+static void cmd_pwd(void)
+{
+    char *cwd = ext2_pwd();
+    if (cwd)
+    {
+        printf("%s\n", cwd);
+        kfree(cwd);
+    }
+    else
+    {
+        printf("pwd: error retrieving current directory\n");
+    }
+}
 
 void create_unix_dirs()
 {
