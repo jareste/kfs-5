@@ -26,6 +26,7 @@ bool current_user_is_valid()
 static int login(char *username, char *password)
 {
     user_t u;
+
     if (find_user_by_name(username, &u) == false)
     {
         return -1;
@@ -110,6 +111,5 @@ static void cmd_create_user()
 void init_users_api()
 {
     install_all_cmds(users_commands, GLOBAL);
-    check_file_location();
     g_current_user.is_valid = false;
 }

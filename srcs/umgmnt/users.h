@@ -34,6 +34,5 @@ void list_users();
 
 bool user_exists(const char *name);
 bool current_user_is_valid();
-void check_file_location();
 
 #endif
