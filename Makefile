@@ -128,7 +128,7 @@ format: crdisk
 	sudo cp users.config mnt_ext2/.
 	sudo rm -rf lost+found
 	sudo umount mnt_ext2
-	rmdir mnt_ext2
+	rm -rf mnt_ext2
 # sudo ./ext2_format disk.img users.config hello124.txt
 	rm ext2_format users.config hello124.txt
 

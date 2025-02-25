@@ -86,7 +86,7 @@ void exec_builtin(char** args, int argc)
     printf("Command '%s' not found\n", args[0]);
 }
 
-void ushell(void)
+void ushell(char** envp)
 {
     char* buffer;
     char* tokens[MAX_TOKENS];
@@ -96,6 +96,13 @@ void ushell(void)
     int i;
 
     printf("Welcome to ushell\n");
+    // print_env(); /* DEBUG */
+    i = 0;
+    while (envp[i] != NULL)
+    {
+        printf("%s\n", envp[i]);
+        i++;
+    }
 
     while (1)
     {
@@ -120,8 +127,14 @@ void ushell(void)
             }
         }
 
+        if (tokens[0][0] == 'q')
+        {
+            break;
+        }
+
         exec_builtin(tokens, token_count);
     }
+    _exit(1);
 }
 
 void echo(char** args, int argc)

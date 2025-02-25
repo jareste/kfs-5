@@ -3,6 +3,6 @@
 
 #include "../../utils/utils.h"
 
-void ushell(void);
+void ushell(char** envp);
 
 #endif

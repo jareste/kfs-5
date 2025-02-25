@@ -24,6 +24,10 @@ extern void switch_context_to_user(task_t *prev, task_t *next);
 extern void copy_context(task_t *prev, task_t *next);
 void show_tasks();
 
+/* ASM ones */
+extern void fork_trampoline(void);
+extern void capture_cpu_state(cpu_state_t *state);
+
 static command_t commands[] = {
     {"show", "Show active tasks", show_tasks},
     {NULL, NULL, NULL}
@@ -245,7 +249,6 @@ void add_new_task(task_t* new_task)
         current->next = new_task;
         new_task->next = task_list;
     }
-    // printf("Task %d added\n", new_task->pid);
 }
 
 static void task_exit_task(task_t* task, int signal)
@@ -360,10 +363,9 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->env = NULL; /* Kernel tasks don't need envp. */
     init_signals(task);
     add_new_task(task);
-    // printf("Task %d created\n", task->pid);
 }
 
-void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
+void create_user_task(void (*entry)(char**), char* name, void (*on_exit)(void))
 {
     task_t *task;
     uint32_t *base;
@@ -371,6 +373,10 @@ void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
     uint32_t *kernel_stack;
     uint32_t *user_stack_top;
     int env_size;
+    int i;
+    char* key;
+    char* equal;
+    char* value;
 
     if (task_index >= MAX_ACTIVE_TASKS)
     {
@@ -389,29 +395,34 @@ void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
     kernel_stack = (uint32_t*)((uint32_t)kernel_stack & 0xFFFFFFF0);
     kernel_stack += STACK_SIZE / sizeof(uint32_t);
 
-    user_stack = user_stack_top;
-    *--user_stack = 0x2B;
-    *--user_stack = (uint32_t)user_stack_top;
-    *--user_stack = 0x202;
-    *--user_stack = 0x23;
-    *--user_stack = (uint32_t)entry;
-
-    printf("User stack top after building iret frame: %p\n", user_stack);
-
-    make_page_user((uintptr_t)entry);
-
     task->env = env_hashtable_create(128);
-    for (int i = 0; default_envp[i]; i++)
+    for (i = 0; default_envp[i]; i++)
     {
-        char *key = default_envp[i];
-        char *equal = strchr(key, '=');
-        char* value = equal + 1;
+        key = default_envp[i];
+        equal = strchr(key, '=');
+        value = equal;
         *equal = '\0';
         *value = '\0';
         value++;
         env_hashtable_set(task->env, key, value);
         *equal = '=';
     }
+
+    char** envp = get_full_env(task->env);
+
+    user_stack = user_stack_top;
+    *--user_stack = 0x2B;
+    *--user_stack = (uint32_t)user_stack_top;
+    *--user_stack = (uint32_t)task_exit; // EIP
+    *--user_stack = 0x202;
+    *--user_stack = 0x23;
+    *--user_stack = (uint32_t)envp;
+    *--user_stack;
+    *--user_stack = (uint32_t)entry;
+
+    printf("User stack top after building iret frame: %p\n", user_stack);
+
+    // make_page_user((uintptr_t)entry);
 
     task->pid = task_index++;
     task->cpu.esp_ = (uint32_t)user_stack;
@@ -429,10 +440,6 @@ void create_user_task(void (*entry)(void), char* name, void (*on_exit)(void))
     init_signals(task);
     add_new_task(task);
 }
-
-extern void fork_trampoline(void);
-extern void capture_cpu_state(cpu_state_t *state);
-pid_t _do_fork(const cpu_state_t *parent_state);
 
 pid_t _do_fork(const cpu_state_t *parent_state)
 {

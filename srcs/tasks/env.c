@@ -231,6 +231,22 @@ int _putenv(char *string)
     return result;
 }
 
+void print_env(void)
+{
+    if (!active_env)
+        return;
+    
+    for (size_t i = 0; i < active_env->size; i++)
+    {
+        env_entry_t *entry = active_env->buckets[i];
+        while (entry)
+        {
+            printf("%s=%s\n", entry->key, entry->value);
+            entry = entry->next;
+        }
+    }
+}
+
 void set_active_env(env_hashtable_t *env)
 {
     active_env = env;
