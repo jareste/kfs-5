@@ -76,6 +76,7 @@ static void cmd_create_user()
     user_t u;
     char buffer[SHA256_HEX_LEN + 1];
     char *pass;
+    char path[256];
 
     printf("Enter username: ");
     strcpy(u.name, get_line());
@@ -103,6 +104,11 @@ static void cmd_create_user()
     printf("Enter shell inode: ");
     u.shell_inode = strtol(get_line(), NULL, 10);
     u.is_valid = true;
+
+    strcpy(path, "/home/");
+    strcat(path, u.name);
+
+    ext2_cmd_mkdir(path);
 
     add_user(&u);
 }
