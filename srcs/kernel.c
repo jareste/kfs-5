@@ -16,6 +16,7 @@ extern uint32_t endkernel;
 
 void kernel_main()
 {
+    disable_print();
     clear_screen();
     init_kshell();
 
@@ -41,6 +42,9 @@ void kernel_main()
     // kshell(); /* Uncomment this line to not run the scheduler */
     scheduler_init();
     start_foo_tasks();
+
+    enable_print();
+    
     scheduler();
 
     /* Keep CPU busy */

@@ -55,4 +55,7 @@ void delete_actual_char();
 void start_ofuscation();
 void stop_ofuscation();
 
+void enable_print();
+void disable_print();
+
 #endif

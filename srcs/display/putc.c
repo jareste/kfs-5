@@ -1,10 +1,19 @@
 #include "display.h"
 
 static int cursor_position = 0;
-
 static int color = LIGHT_GREY;
-
 static bool ofuscated = false;
+static bool can_print = true;
+
+void enable_print()
+{
+    can_print = true;
+}
+
+void disable_print()
+{
+    can_print = false;
+}
 
 void start_ofuscation()
 {
@@ -149,7 +158,14 @@ void move_cursor_down()
 
 void putc_color(char c, uint8_t color)
 {
-    char *video_memory = (char *)VIDEO_MEMORY;
+    char* video_memory;
+
+    if (!can_print)
+    {
+        return;
+    }
+
+    video_memory = (char *)VIDEO_MEMORY;
 
     if (ofuscated)
     {

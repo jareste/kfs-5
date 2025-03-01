@@ -4,6 +4,7 @@
 #include "../utils/utils.h"
 #include "../utils/stdint.h"
 #include "../kshell/kshell.h"
+#include "../keyboard/keyboard.h"
 #include "../display/display.h"
 #include "ext2_fileio.h"
 

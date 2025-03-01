@@ -7,14 +7,6 @@
 
 env_hashtable_t *active_env = NULL;
 
-void* vstrdup(const char *s)
-{
-    size_t len = strlen(s) + 1;
-    char *p = vmalloc(len, true);
-    if (p) memcpy(p, s, len);
-    return p;
-}
-
 /* djb2 hash function (by Dan Bernstein) */
 unsigned long hash_string(const char *str)
 {
