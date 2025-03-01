@@ -1,6 +1,6 @@
 # KFS - A Custom Kernel Project
 
-![Language](https://img.shields.io/badge/language-C/C++/Assembly-blue)
+![Language](https://img.shields.io/badge/language-C/Assembly-blue)
 ![Platform](https://img.shields.io/badge/platform-x86_64-blue)
 
 KFS is a custom kernel project built from scratch with a focus on low-level system programming and operating system concepts. This project serves as an educational endeavor to deepen my understanding of kernel development, memory management, multitasking, and hardware interactions. Some parts may not follow best practices strictly, as they were implemented with a focus on learning and exploration.
