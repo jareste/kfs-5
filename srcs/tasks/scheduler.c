@@ -85,12 +85,24 @@ void free_envp(task_t* task)
     env_hashtable_destroy(task->env);
 }
 
+void close_all_fds(task_t* task)
+{
+    for (int i = 0; i < MAX_FDS; i++)
+    {
+        if (task->fd_table[i] == true)
+        {
+            sys_close(i);
+        }
+    }
+}
+
 void free_finished_tasks()
 {
     if (!to_free)
         return;
     dtach_from_childs(to_free);
     remove_from_father(to_free);
+    close_all_fds(to_free);
     free_envp(to_free);
     kfree((void*)to_free->kernel_stack);
     kfree((void*)to_free->stack);
@@ -361,6 +373,7 @@ void create_task(void (*entry)(void), char* name, void (*on_exit)(void))
     task->gid = 0;
     task->is_user = false;
     task->env = NULL; /* Kernel tasks don't need envp. */
+    memset(task->fd_table, 0, sizeof(task->fd_table));
     init_signals(task);
     add_new_task(task);
 }
@@ -437,6 +450,7 @@ void create_user_task(void (*entry)(char**), char* name, void (*on_exit)(void))
     task->euid = 1000;
     task->gid = 1000;
     task->is_user = true;
+    memset(task->fd_table, 0, sizeof(task->fd_table));
     init_signals(task);
     add_new_task(task);
 }

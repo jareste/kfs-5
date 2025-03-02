@@ -3,6 +3,7 @@
 #include "../utils/utils.h"
 #include "../memory/memory.h"
 #include "../display/display.h"
+#include "../tasks/task.h"
 
 #define MAX_LBA 0x0FFFFFFF
 

@@ -6,6 +6,7 @@
 #include "../utils/utils.h"
 #include "cpu_state.h"
 #include "env.h"
+#include "../ide/ext2_fileio.h"
 
 typedef enum
 {
@@ -46,7 +47,10 @@ typedef struct task_struct
     gid_t gid;
     bool is_user;
 
-    env_hashtable_t *env;
+    file_t fd_pointers[MAX_FDS];
+    bool fd_table[MAX_FDS];
+
+    env_hashtable_t *env; /* should not be used from the kernel itself (? */
     /* missing fields but untill it'll not work makes no sense to add them */    
 } task_t;
 

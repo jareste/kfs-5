@@ -55,7 +55,7 @@ int sys_exit(int status)
     return status;
 }
 
-int sys_write(int fd, const char* buf, size_t count)
+int _sys_write(int fd, const char* buf, size_t count)
 {
     if (!buf || count == 0)
     {
@@ -71,7 +71,7 @@ int sys_write(int fd, const char* buf, size_t count)
     return count;
 }
 
-int sys_read(int fd, char* buf, size_t count)
+int _sys_read(int fd, char* buf, size_t count)
 {
     if (!buf || count == 0)
     {
@@ -110,13 +110,13 @@ int sys_read(int fd, char* buf, size_t count)
     return count;
 }
 
-int sys_open(const char* path, int flags)
+int _sys_open(const char* path, int flags)
 {
     printf("Syscall: open(%s, %d)\n", path, flags);
     return 1;
 }
 
-int sys_close(int fd)
+int _sys_close(int fd)
 {
     printf("Syscall: close(%d)\n", fd);
     return 1;
@@ -230,25 +230,25 @@ void init_syscalls()
     syscall_table[SYS_WRITE] = (syscall_entry_t){
         .ret_value_entry = RET_SIZE,
         .num_args = 3,
-        .handler.handler = (void*)sys_write,
+        .handler.handler = (void*)_sys_write,
     };
 
     syscall_table[SYS_READ] = (syscall_entry_t){
         .ret_value_entry = RET_SIZE,
         .num_args = 3,
-        .handler.handler = (void*)sys_read,
+        .handler.handler = (void*)_sys_read,
     };
 
     syscall_table[SYS_OPEN] = (syscall_entry_t){
         .ret_value_entry = RET_INT,
         .num_args = 2,
-        .handler.handler = (void*)sys_open,
+        .handler.handler = (void*)_sys_open,
     };
 
     syscall_table[SYS_CLOSE] = (syscall_entry_t){
         .ret_value_entry = RET_INT,
         .num_args = 1,
-        .handler.handler = (void*)sys_close,
+        .handler.handler = (void*)_sys_close,
     };
 
     syscall_table[SYS_GETPID] = (syscall_entry_t){
