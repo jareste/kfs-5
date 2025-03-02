@@ -8,7 +8,7 @@
 #include "../kshell/kshell.h"
 #include "../user/syscalls/stdlib.h"
 #include "../utils/queue.h"
-#include "../sockets/sockets.h"
+#include "../sockets/socket.h"
 
 #define STACK_SIZE 4096
 #define MAX_ACTIVE_TASKS 15
@@ -686,43 +686,58 @@ void task_2(void)
     }
 }
 
-void task_socket_send()
+void socket_1()
 {
-    // puts("Task SOCKSEND Started\n");
-    int i = 0;
-    i = 0;
-    int sockfd;
-    sockfd = _socket();
-    /* We assume this must be 0 */
-    // printf("Socket fd: %d\n", sockfd);
-    while (1)
-    {
-        socket_send(sockfd, "Hello, world!\n", 14);
 
+    int sock;
+
+    sock = sys_socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0)
+    {
+        puts_color("Error creating socket\n", RED);
+        return;
+    }
+    sys_bind(sock, "/foo/bar");
+
+    while(1)
+    {
+        sys_write(sock, "Socket 1\n", 9);
         scheduler();
     }
+
 }
 
-void task_socket_recv()
+void socket_2()
 {
-    // puts("Task SOCKRECV Started\n");
+    int sock;
+    char buffer[10];
+    int return_value;
 
-    int sockfd;
-    sockfd = socket_connect(0);
-    // printf("Socket fd: %d\n", sockfd);
-    while (1)
+    sock = sys_connect("/foo/bar");
+    if (sock < 0)
     {
-        char buffer[16];
-        socket_recv(sockfd, buffer, sizeof(buffer));
-        // puts_color("Received: ", GREEN);
-        // puts_color(buffer, GREEN);
-        // putc('\n');
-        // puts("Task 4\n");
-        // if (i % 1000 == 0)
-        // {
-        scheduler();
-        // }
+        puts_color("Error creating socket\n", RED);
+        return;
     }
+
+    while(1)
+    {
+        return_value = sys_read(sock, buffer, sizeof(buffer));
+        if (return_value < 0)
+        {
+            // enable_print();
+            puts_color("Error reading\n", RED);
+        }
+        // else
+        // {
+        //     buffer[return_value] = '\0';
+        //     puts_color("Read: ", GREEN);
+        //     puts_color(buffer, GREEN);
+        //     puts_color("\n", GREEN);
+        // }
+        scheduler();
+    }
+
 }
 
 void recursion()
@@ -835,9 +850,9 @@ void start_foo_tasks(void)
     create_task(task_1, "task_1", task_1_exit);
     create_task(task_read, "task_read", NULL);
     create_task(task_2, "task_2", task_2_exit);
-    create_task(task_socket_send, "task_socket_send", NULL);
-    create_task(task_socket_recv, "task_socket_recv", NULL);
-        
+    create_task(socket_1, "socket_1", NULL);
+    create_task(socket_2, "socket_2", NULL);
+
     to_free = NULL;
     // printf("current_task: %p\n", current_task);
 }

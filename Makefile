@@ -30,10 +30,10 @@ C_SOURCES = kernel.c strcmp.c strlen.c printf.c putc.c puts.c keyboard.c \
 			hatoi.c get_stack_pointer.c kpanic.c dump_registers_c.c \
 			io.c init_timers.c memory.c put_zu.c pmm.c memcpy.c memcmp.c \
 			interrupts.c signals.c syscalls.c get_line.c layouts.c \
-			scheduler.c sockets.c queue.c ide.c ext2.c users.c sha256.c \
+			scheduler.c socket.c queue.c ide.c ext2.c users.c sha256.c \
 			strcpy.c users_api.c strncpy.c strncat.c strrchr.c \
 			strtok.c strcspn.c strspn.c strcat.c ushell.c env.c \
-			strchr.c memmove.c uitoa.c vstrdup.c
+			strchr.c memmove.c uitoa.c vstrdup.c kstrdup.c sock_registers.c
 
 ASM_SOURCES = boot.asm handler.asm gdt_asm.asm dump_registers.asm \
 			  clear_registers.asm tasks.asm write.asm kill.asm \

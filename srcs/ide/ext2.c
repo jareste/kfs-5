@@ -642,7 +642,7 @@ int sys_open(const char *path, int flags)
 
     /* Fill the file_t structure in the task's fd_pointers array */
     current->fd_pointers[fd].flags = flags;
-    current->fd_pointers[fd].fp = fp;
+    current->fd_pointers[fd].file = fp;
     current->fd_pointers[fd].offset = fp->pos;
     current->fd_pointers[fd].ref_count = 1;
     current->fd_table[fd] = true;
@@ -652,8 +652,8 @@ int sys_open(const char *path, int flags)
 
 int sys_close(int fd)
 {
-    task_t *current;
-    file_t *file_obj;
+    task_t* current;
+    file_t* file_obj;
     
     current = get_current_task();
     if (fd < 0 || fd >= MAX_FDS || current->fd_table[fd] == false)
@@ -661,7 +661,12 @@ int sys_close(int fd)
 
     /* Get pointer to the file object in the array */
     file_obj = &current->fd_pointers[fd];
-    ext2_fclose(file_obj->fp);
+    if (file_obj->type == FD_SOCKET)
+    {
+        socket_close(file_obj->socket);
+    }
+    else
+        ext2_fclose(file_obj->file);
     
     /* Mark slot as free and zero out the structure */
     current->fd_table[fd] = false;
@@ -680,8 +685,13 @@ ssize_t sys_read(int fd, void *buf, size_t count)
         return -1;
 
     file_obj = &current->fd_pointers[fd];
-    n = ext2_fread(buf, 1, count, file_obj->fp);
-    file_obj->offset = file_obj->fp->pos;
+    if (file_obj->type == FD_SOCKET)
+    {
+        return socket_recv(file_obj->socket, buf, count);
+    }
+
+    n = ext2_fread(buf, 1, count, file_obj->file);
+    file_obj->offset = file_obj->file->pos;
     return n;
 }
 
@@ -696,8 +706,13 @@ ssize_t sys_write(int fd, const void *buf, size_t count)
         return -1;
 
     file_obj = &current->fd_pointers[fd];
-    n = ext2_fwrite(buf, 1, count, file_obj->fp);
-    file_obj->offset = file_obj->fp->pos;
+    if (file_obj->type == FD_SOCKET)
+    {
+        return socket_send(file_obj->socket, buf, count);
+    }
+
+    n = ext2_fwrite(buf, 1, count, file_obj->file);
+    file_obj->offset = file_obj->file->pos;
     return n;
 }
 

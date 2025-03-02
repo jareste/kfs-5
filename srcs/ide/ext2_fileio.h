@@ -3,6 +3,7 @@
 
 #include "../utils/stdint.h"
 #include "../utils/utils.h"
+#include "../sockets/socket.h"
 #include "ext2.h"
 
 #define MAX_FDS 32
@@ -21,12 +22,19 @@ typedef struct ext2_FILE
     int mode;                   /* 0=read, 1=write (for simplicity) */
 } ext2_FILE;
 
+typedef enum { FD_FILE, FD_SOCKET } fd_type_t;
+
 typedef struct file
 {
-    int flags;           // e.g., O_RDONLY, O_WRONLY, etc.
-    ext2_FILE *fp;       // our ext2 file structure from your file I/O layer
-    uint32_t offset;     // current offset (could mirror fp->pos)
-    int ref_count;       // reference count (useful if fds are shared between processes)
+    fd_type_t type;
+    int flags;
+    int ref_count;
+    uint32_t offset;
+    union
+    {
+        ext2_FILE*  file;
+        socket_t*   socket;
+    };
 } file_t;
 
 ext2_FILE *ext2_fopen(const char *path, const char *mode);
